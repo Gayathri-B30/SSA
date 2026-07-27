@@ -116,9 +116,9 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       icon: Users,
       subItems: [
         { label: 'Employees List', path: '/employees/list' },
-        { label: 'Attendance', path: '/employees/attendance' },
-        { label: 'Leave Management', path: '/employees/leaves' },
-        { label: 'Performance', path: '/employees/performance' },
+        // { label: 'Attendance', path: '/employees/attendance' },
+        // { label: 'Leave Management', path: '/employees/leaves' },
+        // { label: 'Performance', path: '/employees/performance' },
       ],
     },
     {
