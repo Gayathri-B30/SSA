@@ -127,7 +127,7 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       subItems: [
         { label: 'Leads', path: '/crm/leads' },
         // { label: 'Opportunities', path: '/crm/opportunities' },
-        { label: 'Clients', path: '/crm/clients' },
+        // { label: 'Clients', path: '/crm/clients' },
       ],
     },
     // {
