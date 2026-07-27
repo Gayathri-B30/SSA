@@ -1,0 +1,377 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+
+:root {
+  --brand-charcoal: #1F2937;
+  --brand-bg: #FAFAFA;
+  --brand-gray: #6B7280;
+  
+  --color-bg-base: #FAFAFA;
+  --color-text-base: #1F2937;
+  --color-bg-panel: #ffffff;
+  --color-border-base: rgba(31, 41, 55, 0.08);
+  --color-border-input: rgba(31, 41, 55, 0.20);
+  --color-text-muted: #6B7280;
+  
+  --color-brand-sidebar: #1F2937;
+}
+
+.dark {
+  --brand-charcoal: #f8fafc;
+  --brand-bg: #181818;
+  --brand-gray: #94a3b8;
+
+  --color-bg-base: #181818;
+  --color-text-base: #f8fafc;
+  --color-bg-panel: #181818;
+  --color-border-base: rgba(255, 255, 255, 0.08);
+  --color-border-input: rgba(255, 255, 255, 0.20);
+  --color-text-muted: #94a3b8;
+
+  --color-brand-sidebar: #181818;
+}
+
+@theme {
+  --font-sans: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  
+  /* Primary Red Theme overrides renamed/updated to Pastel Mint-Green */
+  --color-primary-50: #f0fbf8;
+  --color-primary-100: #d6f5ee;
+  --color-primary-200: #b3ebdE;
+  --color-primary-300: #86decb;
+  --color-primary-400: #5cb8a6;
+  --color-primary-500: #33a18a;
+  --color-primary-600: #288571;
+  --color-primary-700: #206c5c;
+  --color-primary-800: #195649;
+  --color-primary-900: #14463c;
+
+  /* Explicit Brand Colors */
+  --color-brand-primary: #33a18a;
+  --color-brand-charcoal: var(--brand-charcoal);
+  --color-brand-gray: var(--brand-gray);
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-gold: #C59D5F;
+  --color-brand-success: #2E7D32;
+  --color-brand-cancel: #D1CECC;
+  --color-brand-cancel-hover: #c0bcba;
+  
+  /* Custom color overrides */
+  --color-brand-sidebar: var(--color-brand-sidebar);
+  
+  --color-bg-base: var(--color-bg-base);
+  --color-text-base: var(--color-text-base);
+  --color-bg-panel: var(--color-bg-panel);
+  --color-border-base: var(--color-border-base);
+  --color-border-input: var(--color-border-input);
+  --color-text-muted: var(--color-text-muted);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 161, 138, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(51, 161, 138, 0.5);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Global Styles */
+html,
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-base);
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+/* Ensure hand cursor on all interactive elements across the portal */
+button,
+a,
+select,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"] {
+  cursor: pointer;
+}
+
+/* Force all form controls to always use dynamic theme color text and backgrounds */
+input,
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="password"],
+input[type="date"],
+input[type="search"],
+select,
+textarea {
+  color: var(--color-text-base) !important;
+  -webkit-text-fill-color: var(--color-text-base) !important;
+  background-color: var(--color-bg-panel) !important;
+  border-color: var(--color-border-input) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted) !important;
+  -webkit-text-fill-color: var(--color-text-muted) !important;
+  opacity: 1;
+}
+
+/* Ensure option elements are always visible */
+option {
+  color: var(--color-text-base);
+  background-color: var(--color-bg-panel);
+}
+
+/* Glassmorphism / Luxury Panels Styles */
+.glass-card {
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-base);
+  box-shadow: 0 4px 20px 0 rgba(31, 41, 55, 0.02), 0 1px 3px 0 rgba(31, 41, 55, 0.01);
+}
+
+/* Remove Recharts SVG focus outlines, selection boxes, borders, and hover cursor white bars */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-responsive-container,
+.recharts-wrapper *,
+.recharts-surface *,
+.recharts-responsive-container *,
+.recharts-cartesian-grid-bg,
+.recharts-cartesian-grid-horizontal,
+.recharts-cartesian-grid-vertical,
+svg.recharts-surface {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.recharts-wrapper:focus,
+.recharts-surface:focus,
+.recharts-responsive-container:focus,
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus-visible {
+  outline: none !important;
+}
+
+.recharts-tooltip-cursor,
+.recharts-rectangle.recharts-tooltip-cursor,
+.recharts-active-bar {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+/* Dark theme specific class overrides to achieve automatic compatibility */
+.dark .bg-white {
+  background-color: var(--color-bg-panel) !important;
+}
+.dark .bg-brand-sidebar {
+  background-color: #181818 !important;
+}
+.dark .bg-zinc-50,
+.dark .bg-slate-50,
+.dark .bg-gray-50 {
+  background-color: #121212 !important;
+}
+.dark .bg-zinc-100,
+.dark .bg-slate-100,
+.dark .bg-gray-100 {
+  background-color: #1f1f1f !important;
+}
+.dark .bg-zinc-200,
+.dark .bg-slate-200,
+.dark .bg-gray-200 {
+  background-color: #262626 !important;
+}
+.dark .bg-zinc-800,
+.dark .bg-slate-800,
+.dark .bg-gray-800 {
+  background-color: #222222 !important;
+}
+.dark .bg-zinc-900,
+.dark .bg-slate-900,
+.dark .bg-gray-900 {
+  background-color: #181818 !important;
+}
+.dark .bg-zinc-950,
+.dark .bg-slate-950,
+.dark .bg-gray-950 {
+  background-color: #121212 !important;
+}
+
+.dark .text-zinc-950,
+.dark .text-zinc-900,
+.dark .text-zinc-800,
+.dark .text-zinc-700,
+.dark .text-gray-950,
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700,
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 {
+  color: #f8fafc !important;
+}
+.dark .text-zinc-500,
+.dark .text-zinc-600,
+.dark .text-gray-500,
+.dark .text-gray-600,
+.dark .text-slate-500,
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+.dark .text-zinc-400,
+.dark .text-gray-400,
+.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+.dark .border-zinc-200,
+.dark .border-zinc-100,
+.dark .border-slate-200,
+.dark .border-slate-100,
+.dark .border-gray-200,
+.dark .border-gray-100 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Specific overrides for notifications dropdown cards in dark mode */
+.dark .bg-primary-50 {
+  background-color: rgba(51, 161, 138, 0.15) !important;
+}
+.dark .bg-primary-100 {
+  background-color: rgba(51, 161, 138, 0.22) !important;
+}
+.dark .border-primary-100 {
+  border-color: rgba(51, 161, 138, 0.2) !important;
+}
+.dark .bg-red-50 {
+  background-color: rgba(51, 161, 138, 0.12) !important;
+}
+
+/* Hover overrides for notification dropdown cards in dark mode */
+.dark .hover\:bg-primary-100\/60:hover {
+  background-color: rgba(51, 161, 138, 0.2) !important;
+}
+.dark .hover\:bg-slate-100\/60:hover {
+  background-color: rgba(24, 24, 24, 0.8) !important;
+}
+.dark .hover\:bg-slate-50:hover {
+  background-color: #242424 !important;
+}
+
+.glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-hover:hover {
+  transform: translateY(-4px);
+  background: var(--color-bg-panel);
+  border-color: rgba(197, 157, 95, 0.3);
+  box-shadow: 0 12px 30px 0 rgba(31, 41, 55, 0.06);
+}
+
+/* Custom glow animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(51, 161, 138, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(51, 161, 138, 0.2);
+  }
+}
+
+.glow-brand {
+  animation: pulse-glow 3s infinite;
+}
+
+/* Shimmer animation for loading states */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-wrapper::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 2s infinite;
+  content: '';
+}
+
+/* Sidebar active styles */
+.sidebar-link-active {
+  background: var(--color-brand-primary);
+  color: #ffffff;
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
