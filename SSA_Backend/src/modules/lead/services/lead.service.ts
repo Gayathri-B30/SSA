@@ -12,17 +12,28 @@ export class LeadService {
     return await this.leadRepository.findAllCategories();
   }
 
-  async createCategory(data: { name: string; code?: string; description?: string }, userRole: string) {
-    if (userRole !== 'Company' && userRole !== 'Super Admin') {
-      throw new Error('Unauthorized: Only Company Admin or Super Admin can create project categories.');
+  private checkAdminRole(userRole: string, actionName: string) {
+    const allowed = ['Company', 'Super Admin', 'Admin', 'Manager'];
+    if (!allowed.includes(userRole)) {
+      throw new Error(`Unauthorized: Only Company Admin, Super Admin, or Admin can ${actionName}.`);
     }
+  }
+
+  async createCategory(data: { name: string; code?: string; description?: string }, userRole: string) {
+    this.checkAdminRole(userRole, 'create project categories');
+
     if (!data.name || !data.name.trim()) {
       throw new Error('Category name is required.');
     }
     
     // Generate uppercase code if not provided
-    let code = data.code ? data.code.toUpperCase().replace(/\s+/g, '_') : data.name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    let code = data.code && data.code.trim() 
+      ? data.code.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_') 
+      : data.name.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
     code = code.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    if (!code) {
+      code = `CAT_${Date.now().toString().slice(-4)}`;
+    }
 
     const existing = await this.leadRepository.findCategoryByCode(code);
     if (existing) {
@@ -36,17 +47,33 @@ export class LeadService {
     });
   }
 
-  async updateCategory(id: number, data: { name?: string; description?: string }, userRole: string) {
-    if (userRole !== 'Company' && userRole !== 'Super Admin') {
-      throw new Error('Unauthorized: Only Company Admin or Super Admin can edit project categories.');
+  async updateCategory(id: number, data: { name?: string; code?: string; description?: string }, userRole: string) {
+    this.checkAdminRole(userRole, 'edit project categories');
+
+    const updatePayload: Partial<{ name: string; code: string; description: string }> = {};
+
+    if (data.name !== undefined && data.name.trim()) {
+      updatePayload.name = data.name.trim();
     }
-    return await this.leadRepository.updateCategory(id, data);
+    if (data.description !== undefined) {
+      updatePayload.description = data.description.trim();
+    }
+    if (data.code !== undefined && data.code.trim()) {
+      let cleanCode = data.code.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+      if (cleanCode) {
+        const existing = await this.leadRepository.findCategoryByCode(cleanCode);
+        if (existing && existing.id !== id) {
+          throw new Error(`Category code '${cleanCode}' is already in use by another category.`);
+        }
+        updatePayload.code = cleanCode;
+      }
+    }
+
+    return await this.leadRepository.updateCategory(id, updatePayload);
   }
 
   async deleteCategory(id: number, userRole: string) {
-    if (userRole !== 'Company' && userRole !== 'Super Admin') {
-      throw new Error('Unauthorized: Only Company Admin or Super Admin can delete project categories.');
-    }
+    this.checkAdminRole(userRole, 'delete project categories');
     return await this.leadRepository.deleteCategory(id);
   }
 
@@ -72,9 +99,7 @@ export class LeadService {
     },
     userRole: string
   ) {
-    if (userRole !== 'Company' && userRole !== 'Super Admin') {
-      throw new Error('Unauthorized: Only Company Admin or Super Admin can add lead questions.');
-    }
+    this.checkAdminRole(userRole, 'add lead questions');
     if (!data.categoryId) {
       throw new Error('Category ID is required.');
     }
@@ -125,16 +150,12 @@ export class LeadService {
     },
     userRole: string
   ) {
-    if (userRole !== 'Company' && userRole !== 'Super Admin') {
-      throw new Error('Unauthorized: Only Company Admin or Super Admin can edit lead questions.');
-    }
+    this.checkAdminRole(userRole, 'edit lead questions');
     return await this.leadRepository.updateTemplateField(id, data);
   }
 
   async deleteTemplateField(id: number, userRole: string) {
-    if (userRole !== 'Company' && userRole !== 'Super Admin') {
-      throw new Error('Unauthorized: Only Company Admin or Super Admin can delete lead questions.');
-    }
+    this.checkAdminRole(userRole, 'delete lead questions');
     return await this.leadRepository.deleteTemplateField(id);
   }
 
