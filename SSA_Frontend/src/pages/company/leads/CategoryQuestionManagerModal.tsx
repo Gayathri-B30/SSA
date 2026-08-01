@@ -156,23 +156,17 @@ export const CategoryQuestionManagerModal: React.FC<CategoryQuestionManagerModal
     }
 
     setSavingCategory(true)
-    setErrorMsg(null)
-    setSuccessMsg(null)
     try {
       if (editingCategory) {
         // Update existing category
         const res = await api.put(`/leads/categories/${editingCategory.id}`, {
           name: catName.trim(),
-          code: catCode.trim() ? catCode.trim().toUpperCase() : undefined,
           description: catDesc.trim()
         })
         if (res.data?.success) {
           setSuccessMsg('Category updated successfully.')
           fetchCategories()
           onUpdated?.()
-        } else {
-          setErrorMsg(res.data?.message || 'Failed to update category.')
-          return
         }
       } else {
         // Add new category
@@ -188,16 +182,11 @@ export const CategoryQuestionManagerModal: React.FC<CategoryQuestionManagerModal
             setSelectedCategoryId(res.data.data.id)
           }
           onUpdated?.()
-        } else {
-          setErrorMsg(res.data?.message || 'Failed to add category.')
-          return
         }
       }
       setIsCategoryModalOpen(false)
     } catch (err: any) {
-      console.error('Failed to save category:', err)
-      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to save category.'
-      setErrorMsg(msg)
+      setErrorMsg(err.response?.data?.message || 'Failed to save category.')
     } finally {
       setSavingCategory(false)
     }

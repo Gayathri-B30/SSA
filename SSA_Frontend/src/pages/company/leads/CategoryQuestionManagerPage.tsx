@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   FiX, FiPlus, FiEdit2, FiTrash2, FiFolderPlus, FiHelpCircle,
-  FiCheck, FiAlertCircle, FiLayers, FiGrid, FiArrowRight, FiArrowLeft, FiList
+  FiCheck, FiAlertCircle, FiLayers, FiGrid, FiArrowRight, FiArrowLeft
 } from 'react-icons/fi'
 import api from '../../../services/api'
 
@@ -136,32 +136,28 @@ export const CategoryQuestionManagerPage: React.FC = () => {
 
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!catName.trim()) {
-      setErrorMsg('Category name is required.')
+    if (!catName.trim() || !catCode.trim()) {
+      setErrorMsg('Category name and code are required.')
       return
     }
 
     setSavingCategory(true)
-    setErrorMsg(null)
-    setSuccessMsg(null)
     try {
       if (editingCategory) {
         const res = await api.put(`/leads/categories/${editingCategory.id}`, {
           name: catName.trim(),
-          code: catCode.trim() ? catCode.trim().toUpperCase() : undefined,
+          code: catCode.trim(),
           description: catDesc.trim()
         })
         if (res.data?.success) {
           setSuccessMsg('Category updated successfully!')
           setIsCategoryModalOpen(false)
           fetchCategories()
-        } else {
-          setErrorMsg(res.data?.message || 'Failed to update category.')
         }
       } else {
         const res = await api.post('/leads/categories', {
           name: catName.trim(),
-          code: catCode.trim() ? catCode.trim().toUpperCase() : undefined,
+          code: catCode.trim(),
           description: catDesc.trim()
         })
         if (res.data?.success) {
@@ -171,14 +167,11 @@ export const CategoryQuestionManagerPage: React.FC = () => {
           if (res.data.data?.id) {
             setSelectedCategoryId(res.data.data.id)
           }
-        } else {
-          setErrorMsg(res.data?.message || 'Failed to create category.')
         }
       }
     } catch (err: any) {
       console.error('Failed to save category:', err)
-      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to save category.'
-      setErrorMsg(msg)
+      setErrorMsg(err.response?.data?.message || 'Failed to save category.')
     } finally {
       setSavingCategory(false)
     }
