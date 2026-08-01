@@ -49,13 +49,61 @@ export class LeadRepository {
     return await repo.findOne({ where: { id } });
   }
 
+  async findCategoryByCode(code: string): Promise<ProjectCategoryModel | null> {
+    const repo = await this.getCategoryRepo();
+    return await repo.findOne({ where: { code } });
+  }
+
+  async createCategory(categoryData: Partial<ProjectCategoryModel>): Promise<ProjectCategoryModel> {
+    const repo = await this.getCategoryRepo();
+    const category = repo.create(categoryData);
+    return await repo.save(category);
+  }
+
+  async updateCategory(id: number, categoryData: Partial<ProjectCategoryModel>): Promise<ProjectCategoryModel> {
+    const repo = await this.getCategoryRepo();
+    const category = await repo.findOne({ where: { id } });
+    if (!category) throw new Error(`Category with ID ${id} not found.`);
+    Object.assign(category, categoryData);
+    return await repo.save(category);
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    const repo = await this.getCategoryRepo();
+    await repo.delete(id);
+  }
+
   // Template Fields
   async findTemplateFieldsByCategoryId(categoryId: number): Promise<CategoryTemplateFieldModel[]> {
     const repo = await this.getFieldRepo();
     return await repo.find({
       where: { categoryId },
-      order: { displayOrder: 'ASC' }
+      order: { displayOrder: 'ASC', id: 'ASC' }
     });
+  }
+
+  async findTemplateFieldById(id: number): Promise<CategoryTemplateFieldModel | null> {
+    const repo = await this.getFieldRepo();
+    return await repo.findOne({ where: { id } });
+  }
+
+  async createTemplateField(fieldData: Partial<CategoryTemplateFieldModel>): Promise<CategoryTemplateFieldModel> {
+    const repo = await this.getFieldRepo();
+    const field = repo.create(fieldData);
+    return await repo.save(field);
+  }
+
+  async updateTemplateField(id: number, fieldData: Partial<CategoryTemplateFieldModel>): Promise<CategoryTemplateFieldModel> {
+    const repo = await this.getFieldRepo();
+    const field = await repo.findOne({ where: { id } });
+    if (!field) throw new Error(`Template field with ID ${id} not found.`);
+    Object.assign(field, fieldData);
+    return await repo.save(field);
+  }
+
+  async deleteTemplateField(id: number): Promise<void> {
+    const repo = await this.getFieldRepo();
+    await repo.delete(id);
   }
 
   // Leads

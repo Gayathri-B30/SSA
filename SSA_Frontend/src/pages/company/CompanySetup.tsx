@@ -289,8 +289,8 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
         <button
           onClick={() => navigate('/organization/branches')}
           className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'branches'
-              ? 'border-brand-primary text-brand-primary'
-              : 'border-transparent text-brand-gray hover:text-brand-charcoal'
+            ? 'border-brand-primary text-brand-primary'
+            : 'border-transparent text-brand-gray hover:text-brand-charcoal'
             }`}
         >
           Branch / Division
@@ -687,11 +687,10 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
 
       {/* Branch Modal */}
       {isBranchModalOpen && (
-        <div 
-          onClick={() => setIsBranchModalOpen(false)}
+        <div
           className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-20 md:pt-24 pb-8 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="relative my-auto w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 text-brand-charcoal"
           >
@@ -712,7 +711,7 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Branch Name */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Branch / Division Name</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Branch / Division Name <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     maxLength={100}
@@ -731,12 +730,19 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
                     className="w-full bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none rounded-xl px-4 py-2.5 text-xs text-slate-800"
                     placeholder="Bangalore Studio"
                   />
-                  {branchErrors.name && <p className="text-red-500 text-[10px] mt-1 font-semibold">{branchErrors.name.message}</p>}
+                  {branchErrors.name && (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {branchErrors.name.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Branch Code */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Code</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Code <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     maxLength={6}
@@ -755,12 +761,19 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
                     className="w-full bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none rounded-xl px-4 py-2.5 text-xs text-slate-800"
                     placeholder="BLR"
                   />
-                  {branchErrors.code && <p className="text-red-500 text-[10px] mt-1 font-semibold">{branchErrors.code.message}</p>}
+                  {branchErrors.code && (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {branchErrors.code.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Manager Name */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Branch Manager</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Branch Partner <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     maxLength={50}
@@ -779,12 +792,19 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
                     className="w-full bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none rounded-xl px-4 py-2.5 text-xs text-slate-800"
                     placeholder="Rajeev Mehta"
                   />
-                  {branchErrors.manager && <p className="text-red-500 text-[10px] mt-1 font-semibold">{branchErrors.manager.message}</p>}
+                  {branchErrors.manager && (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {branchErrors.manager.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Phone */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mobile Phone</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mobile Phone <span className="text-red-500">*</span></label>
                   <input
                     type="tel"
                     maxLength={10}
@@ -803,12 +823,19 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
                     className="w-full bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none rounded-xl px-4 py-2.5 text-xs text-slate-800"
                     placeholder="9876543210"
                   />
-                  {branchErrors.phone && <p className="text-red-500 text-[10px] mt-1 font-semibold">{branchErrors.phone.message}</p>}
+                  {branchErrors.phone && (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {branchErrors.phone.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Password */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password {!editingBranch && <span className="text-red-500">*</span>}</label>
                   <input
                     type="password"
                     maxLength={25}
@@ -829,20 +856,34 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
                     className="w-full bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none rounded-xl px-4 py-2.5 text-xs text-slate-800"
                     placeholder={editingBranch ? 'Leave empty to keep current password' : '••••••'}
                   />
-                  {branchErrors.password && <p className="text-red-500 text-[10px] mt-1 font-semibold">{branchErrors.password.message}</p>}
+                  {branchErrors.password && (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {branchErrors.password.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Address */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Address</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Address <span className="text-red-500">*</span></label>
                 <textarea
                   rows={2}
                   {...registerBranch('address', { required: 'Address is required' })}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none rounded-xl px-4 py-2.5 text-xs text-slate-800 resize-none"
                   placeholder="Floor 3, Brigade Chambers, Indiranagar"
                 />
-                {branchErrors.address && <p className="text-red-500 text-[10px] mt-1 font-semibold">{branchErrors.address.message}</p>}
+                {branchErrors.address && (
+                  <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {branchErrors.address.message}
+                  </p>
+                )}
               </div>
 
               {/* Action Buttons */}

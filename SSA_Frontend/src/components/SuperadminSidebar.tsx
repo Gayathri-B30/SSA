@@ -119,7 +119,7 @@ export const SuperadminSidebar: React.FC<SuperadminSidebarProps> = ({
             </div>
             <div className={`leading-none text-left transition-opacity duration-300 ${isCollapsed ? 'md:hidden opacity-0' : 'opacity-100'}`}>
               <div className="font-bold text-sm tracking-tight text-white whitespace-nowrap">
-                SSA ERP
+                SSA
               </div>
               <div className="text-[7px] tracking-widest text-brand-gold mt-0.5 uppercase whitespace-nowrap font-bold">
                 SUPERADMIN PANEL
@@ -127,68 +127,68 @@ export const SuperadminSidebar: React.FC<SuperadminSidebarProps> = ({
             </div>
           </div>
 
-        {/* Collapse Button - only visible on desktop screen size */}
-        <button
-          onClick={() => onToggleCollapse?.(!isCollapsed)}
-          className={`hidden md:block p-1 rounded-lg text-gray-400 hover:text-white hover:bg-slate-800 transition-colors ${isCollapsed
+          {/* Collapse Button - only visible on desktop screen size */}
+          <button
+            onClick={() => onToggleCollapse?.(!isCollapsed)}
+            className={`hidden md:block p-1 rounded-lg text-gray-400 hover:text-white hover:bg-slate-800 transition-colors ${isCollapsed
               ? 'absolute -right-3 top-1/2 -translate-y-1/2 bg-brand-sidebar border border-slate-800/80 shadow-md z-50'
               : ''
-            }`}
-        >
-          <ChevronLeft className={`w-5 h-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-
-      {/* Sidebar Body Navigation */}
-      <div className={`flex-grow py-6 overflow-y-auto text-left transition-all duration-300 ${isCollapsed ? 'md:px-2 px-4' : 'px-4'}`}>
-        <nav className="space-y-1 select-none">
-          <button
-            onClick={() => handleMenuClick('dashboard')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${activeMenu === 'dashboard'
-                ? 'text-white bg-brand-primary shadow-md shadow-brand-primary/25'
-                : 'text-gray-400 hover:text-white hover:bg-slate-800/60'
-              } ${isCollapsed ? 'md:justify-center' : ''}`}
-            title="Dashboard"
+              }`}
           >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            <span className={`transition-opacity duration-300 ${isCollapsed ? 'md:hidden opacity-0' : 'opacity-100'}`}>Dashboard</span>
+            <ChevronLeft className={`w-5 h-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
           </button>
-          <button
-            onClick={() => handleMenuClick('company')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${activeMenu === 'company'
-                ? 'text-white bg-brand-primary shadow-md shadow-brand-primary/25'
-                : 'text-gray-400 hover:text-white hover:bg-slate-800/60'
-              } ${isCollapsed ? 'md:justify-center' : ''}`}
-            title="Company"
-          >
-            <Building2 className="w-5 h-5 flex-shrink-0" />
-            <span className={`transition-opacity duration-300 ${isCollapsed ? 'md:hidden opacity-0' : 'opacity-100'}`}>Company</span>
-          </button>
-        </nav>
-      </div>
-
-      {/* Sidebar Footer User Details */}
-      <div className="p-4 border-t border-slate-800/80 flex flex-col gap-2 bg-slate-900/40">
-        <div className={`flex items-center gap-3 mb-1 text-left ${isCollapsed ? 'md:justify-center' : ''}`}>
-          <div className="w-9 h-9 rounded-full bg-brand-primary flex items-center justify-center text-white font-semibold border border-brand-gold/30 flex-shrink-0">
-            SA
-          </div>
-          <div className={`flex-1 overflow-hidden leading-tight ${isCollapsed ? 'md:hidden' : ''}`}>
-            <p className="text-xs font-semibold text-white truncate">Super Admin</p>
-            <p className="text-[10px] text-gray-400 truncate">superadmin@example.com</p>
-          </div>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-400 hover:bg-red-950/20 transition-all duration-200 cursor-pointer text-left ${isCollapsed ? 'md:justify-center' : ''}`}
-          title="Logout"
-        >
-          <LogOut className="w-5 h-5 flex-shrink-0" />
-          <span className={`${isCollapsed ? 'md:hidden' : ''}`}>Logout</span>
-        </button>
-      </div>
-    </aside >
+        {/* Sidebar Body Navigation */}
+        <div className={`flex-grow py-6 overflow-y-auto text-left transition-all duration-300 ${isCollapsed ? 'md:px-2 px-4' : 'px-4'}`}>
+          <nav className="space-y-1 select-none">
+            <button
+              onClick={() => handleMenuClick('dashboard')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${activeMenu === 'dashboard'
+                ? 'text-white bg-brand-primary shadow-md shadow-brand-primary/25'
+                : 'text-gray-400 hover:text-white hover:bg-slate-800/60'
+                } ${isCollapsed ? 'md:justify-center' : ''}`}
+              title="Dashboard"
+            >
+              <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
+              <span className={`transition-opacity duration-300 ${isCollapsed ? 'md:hidden opacity-0' : 'opacity-100'}`}>Dashboard</span>
+            </button>
+            <button
+              onClick={() => handleMenuClick('company')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${activeMenu === 'company'
+                ? 'text-white bg-brand-primary shadow-md shadow-brand-primary/25'
+                : 'text-gray-400 hover:text-white hover:bg-slate-800/60'
+                } ${isCollapsed ? 'md:justify-center' : ''}`}
+              title="Company"
+            >
+              <Building2 className="w-5 h-5 flex-shrink-0" />
+              <span className={`transition-opacity duration-300 ${isCollapsed ? 'md:hidden opacity-0' : 'opacity-100'}`}>Company</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Sidebar Footer User Details */}
+        <div className="p-4 border-t border-slate-800/80 flex flex-col gap-2 bg-slate-900/40">
+          <div className={`flex items-center gap-3 mb-1 text-left ${isCollapsed ? 'md:justify-center' : ''}`}>
+            <div className="w-9 h-9 rounded-full bg-brand-primary flex items-center justify-center text-white font-semibold border border-brand-gold/30 flex-shrink-0">
+              SA
+            </div>
+            <div className={`flex-1 overflow-hidden leading-tight ${isCollapsed ? 'md:hidden' : ''}`}>
+              <p className="text-xs font-semibold text-white truncate">Super Admin</p>
+              <p className="text-[10px] text-gray-400 truncate">superadmin@example.com</p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-400 hover:bg-red-950/20 transition-all duration-200 cursor-pointer text-left ${isCollapsed ? 'md:justify-center' : ''}`}
+            title="Logout"
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <span className={`${isCollapsed ? 'md:hidden' : ''}`}>Logout</span>
+          </button>
+        </div>
+      </aside >
     </>
   )
 }

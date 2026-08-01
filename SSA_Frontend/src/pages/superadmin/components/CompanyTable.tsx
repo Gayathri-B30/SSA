@@ -35,7 +35,7 @@ export const CompanyTable: React.FC<CompanyTableProps> = ({
   return (
     <div className="space-y-4">
       {/* Company Control Panel Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-zinc-200/80 shadow-sm shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-border-base shadow-sm shrink-0">
         <div className="relative flex items-center w-full sm:w-80">
           <span className="absolute left-3.5 text-zinc-400">
             <Search className="w-4 h-4" />
@@ -45,7 +45,7 @@ export const CompanyTable: React.FC<CompanyTableProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search companies by name..."
-            className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200/80 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-border-base rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary transition-all"
           />
         </div>
 
@@ -59,10 +59,10 @@ export const CompanyTable: React.FC<CompanyTableProps> = ({
       </div>
 
       {/* Company List Table with Edit and Delete options */}
-      <div className="bg-white rounded-2xl border border-zinc-200/80 overflow-hidden shadow-sm overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[800px]">
-          <thead>
-            <tr className="border-b border-zinc-100 text-[10px] font-black text-brand-charcoal uppercase tracking-wider bg-zinc-50/40">
+      <div className="glass-card rounded-2xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
+        <table className="w-full text-left text-xs text-brand-charcoal min-w-[800px]">
+          <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
+            <tr className="border-b border-slate-200 text-[10px] font-black uppercase tracking-wider">
               <th className="py-4 px-6">Company Name</th>
               <th className="py-4 px-6">Contact Person</th>
               <th className="py-4 px-6">Status</th>
@@ -70,10 +70,10 @@ export const CompanyTable: React.FC<CompanyTableProps> = ({
               <th className="py-4 px-6 text-center">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-50 text-xs">
+          <tbody className="divide-y divide-slate-200">
             {filteredCompanies.length > 0 ? (
               filteredCompanies.map((company) => (
-                <tr key={company.id} className="hover:bg-zinc-50/30 transition-colors">
+                <tr key={company.id} className="transition-colors">
                   {/* Name with circular red logo */}
                   <td className="py-3.5 px-6 font-extrabold text-zinc-800">
                     <div className="flex items-center gap-3">
@@ -112,7 +112,7 @@ export const CompanyTable: React.FC<CompanyTableProps> = ({
                   <td className="py-3.5 px-6 text-center whitespace-nowrap space-x-2.5">
                     <button
                       onClick={() => onEditClick(company)}
-                      className="p-2 text-zinc-500 hover:text-zinc-950 bg-white hover:bg-zinc-50 border border-zinc-200 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
+                      className="p-2 text-zinc-500 hover:text-zinc-950 bg-white hover:bg-zinc-50 border border-slate-200 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
                       title="Edit Company"
                     >
                       <Pencil className="w-3.5 h-3.5" />

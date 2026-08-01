@@ -13,7 +13,6 @@
   --color-text-base: #1F2937;
   --color-bg-panel: #ffffff;
   --color-border-base: rgba(31, 41, 55, 0.08);
-  --color-border-input: rgba(31, 41, 55, 0.20);
   --color-text-muted: #6B7280;
   
   --color-brand-sidebar: #1F2937;
@@ -28,7 +27,6 @@
   --color-text-base: #f8fafc;
   --color-bg-panel: #181818;
   --color-border-base: rgba(255, 255, 255, 0.08);
-  --color-border-input: rgba(255, 255, 255, 0.20);
   --color-text-muted: #94a3b8;
 
   --color-brand-sidebar: #181818;
@@ -66,7 +64,6 @@
   --color-text-base: var(--color-text-base);
   --color-bg-panel: var(--color-bg-panel);
   --color-border-base: var(--color-border-base);
-  --color-border-input: var(--color-border-input);
   --color-text-muted: var(--color-text-muted);
 }
 
@@ -107,7 +104,7 @@ body {
   color: var(--color-text-base);
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   overflow-x: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior-x: hidden;
 }
 
 /* Ensure hand cursor on all interactive elements across the portal */
@@ -134,7 +131,7 @@ textarea {
   color: var(--color-text-base) !important;
   -webkit-text-fill-color: var(--color-text-base) !important;
   background-color: var(--color-bg-panel) !important;
-  border-color: var(--color-border-input) !important;
+  border-color: var(--color-border-base) !important;
 }
 
 input::placeholder,
@@ -259,7 +256,10 @@ svg.recharts-surface {
 .dark .border-slate-200,
 .dark .border-slate-100,
 .dark .border-gray-200,
-.dark .border-gray-100 {
+.dark .border-gray-100,
+.dark [class*="border-zinc-"],
+.dark [class*="border-slate-"],
+.dark [class*="border-gray-"] {
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 

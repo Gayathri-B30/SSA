@@ -17,6 +17,38 @@ export class LeadController {
     }
   }
 
+  async createCategory(req: NextRequest, user: any) {
+    try {
+      const body = await req.json();
+      const category = await this.leadService.createCategory(body, user.role);
+      return NextResponse.json({ success: true, data: category }, { status: 201 });
+    } catch (err: any) {
+      const status = err.message.includes('Unauthorized') ? 403 : 400;
+      return NextResponse.json({ success: false, message: err.message }, { status });
+    }
+  }
+
+  async updateCategory(req: NextRequest, id: number, user: any) {
+    try {
+      const body = await req.json();
+      const category = await this.leadService.updateCategory(id, body, user.role);
+      return NextResponse.json({ success: true, data: category });
+    } catch (err: any) {
+      const status = err.message.includes('Unauthorized') ? 403 : 400;
+      return NextResponse.json({ success: false, message: err.message }, { status });
+    }
+  }
+
+  async deleteCategory(req: NextRequest, id: number, user: any) {
+    try {
+      await this.leadService.deleteCategory(id, user.role);
+      return NextResponse.json({ success: true, message: 'Category deleted successfully.' });
+    } catch (err: any) {
+      const status = err.message.includes('Unauthorized') ? 403 : 400;
+      return NextResponse.json({ success: false, message: err.message }, { status });
+    }
+  }
+
   async getTemplateFields(req: NextRequest) {
     try {
       const { searchParams } = new URL(req.url);
@@ -33,6 +65,38 @@ export class LeadController {
       return NextResponse.json({ success: true, data: fields });
     } catch (err: any) {
       return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  async createTemplateField(req: NextRequest, user: any) {
+    try {
+      const body = await req.json();
+      const field = await this.leadService.createTemplateField(body, user.role);
+      return NextResponse.json({ success: true, data: field }, { status: 201 });
+    } catch (err: any) {
+      const status = err.message.includes('Unauthorized') ? 403 : 400;
+      return NextResponse.json({ success: false, message: err.message }, { status });
+    }
+  }
+
+  async updateTemplateField(req: NextRequest, id: number, user: any) {
+    try {
+      const body = await req.json();
+      const field = await this.leadService.updateTemplateField(id, body, user.role);
+      return NextResponse.json({ success: true, data: field });
+    } catch (err: any) {
+      const status = err.message.includes('Unauthorized') ? 403 : 400;
+      return NextResponse.json({ success: false, message: err.message }, { status });
+    }
+  }
+
+  async deleteTemplateField(req: NextRequest, id: number, user: any) {
+    try {
+      await this.leadService.deleteTemplateField(id, user.role);
+      return NextResponse.json({ success: true, message: 'Question deleted successfully.' });
+    } catch (err: any) {
+      const status = err.message.includes('Unauthorized') ? 403 : 400;
+      return NextResponse.json({ success: false, message: err.message }, { status });
     }
   }
 

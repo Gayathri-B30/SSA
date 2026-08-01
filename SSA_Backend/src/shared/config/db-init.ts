@@ -79,9 +79,9 @@ async function seedLeadTemplates(ds: any) {
     { catCode: 'RESIDENTIAL', fieldKey: 'solarRainwater', fieldName: 'Solar & Rainwater Harvesting', fieldType: 'yes-no', section: 'Amenities & Features', capturedAtStage: 'Requirement Collection', isRequired: false, displayOrder: 23 },
 
     { catCode: 'RESIDENTIAL', fieldKey: 'vaastuComplianceLevel', fieldName: 'Vaastu Compliance Level', fieldType: 'single-select', fieldOptions: ['Strict', 'Moderate', 'Not Required'], section: 'Preferences', capturedAtStage: 'Lead', isRequired: false, displayOrder: 24 },
-    { catCode: 'RESIDENTIAL', fieldKey: 'style', fieldName: 'Style Preference', fieldType: 'single-select', fieldOptions: ['Contemporary', 'Traditional', 'Minimal'], section: 'Preferences', capturedAtStage: 'Requirement Collection', isRequired: false, displayOrder: 25 },
+    { catCode: 'RESIDENTIAL', fieldKey: 'style', fieldName: 'Style Preference', fieldType: 'text', fieldOptions: ['Contemporary', 'Traditional', 'Minimal', 'Modern', 'Classical'], section: 'Preferences', capturedAtStage: 'Requirement Collection', isRequired: false, displayOrder: 25 },
     { catCode: 'RESIDENTIAL', fieldKey: 'materialFinish', fieldName: 'Material & Finish Aspirations', fieldType: 'text', section: 'Preferences', capturedAtStage: 'Requirement Collection', isRequired: false, displayOrder: 26 },
-    { catCode: 'RESIDENTIAL', fieldKey: 'furnitureNewVsRetained', fieldName: 'Furniture Preferences', fieldType: 'single-select', fieldOptions: ['New', 'Retained', 'Mix'], section: 'Preferences', capturedAtStage: 'Requirement Collection', isRequired: false, displayOrder: 27 },
+    { catCode: 'RESIDENTIAL', fieldKey: 'furnitureNewVsRetained', fieldName: 'Furniture Type', fieldType: 'text', fieldOptions: ['New', 'Retained', 'Mix', 'Modern', 'Classic'], section: 'Preferences', capturedAtStage: 'Requirement Collection', isRequired: false, displayOrder: 27 },
 
     { catCode: 'RESIDENTIAL', fieldKey: 'unitCount', fieldName: 'Number of Units', fieldType: 'number', section: 'Apartments (additional)', capturedAtStage: 'Requirement Collection', isRequired: false, displayOrder: 28 },
     { catCode: 'RESIDENTIAL', fieldKey: 'unitMix', fieldName: 'Unit Mix (1/2/3/4 BHK)', fieldType: 'text', section: 'Apartments (additional)', capturedAtStage: 'Requirement Collection', isRequired: false, displayOrder: 29 },
@@ -311,6 +311,16 @@ async function seedLeadTemplates(ds: any) {
     existing.isRequired = f.isRequired;
     existing.displayOrder = f.displayOrder;
     await fieldRepo.save(existing);
+  }
+
+  // Delete obsolete/duplicate fields that are no longer in fieldsData definition
+  const validKeys = fieldsData.map((f) => f.fieldKey);
+  if (validKeys.length > 0) {
+    await fieldRepo
+      .createQueryBuilder()
+      .delete()
+      .where('fieldKey NOT IN (:...validKeys)', { validKeys })
+      .execute();
   }
 
   // 3. Seed Deliverables Templates (Section 4)

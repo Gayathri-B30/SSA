@@ -235,9 +235,13 @@ export class LeadModel {
   @Column({ type: 'text', nullable: true })
   materialPreferences?: string;
 
+  @Column({ type: 'jsonb', nullable: true })
+  attachments?: { name: string; url: string; size: number; type: string }[];
+
   // Audit
   @Column({ type: 'varchar', nullable: true })
   createdBy?: string;
+
 
   @CreateDateColumn()
   createdAt!: Date;
