@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   FiX, FiPlus, FiEdit2, FiTrash2, FiFolderPlus, FiHelpCircle,
-  FiCheck, FiAlertCircle, FiLayers, FiGrid, FiArrowRight, FiArrowLeft
+  FiCheck, FiAlertCircle, FiLayers, FiGrid, FiArrowRight, FiArrowLeft, FiList
 } from 'react-icons/fi'
 import api from '../../../services/api'
 
