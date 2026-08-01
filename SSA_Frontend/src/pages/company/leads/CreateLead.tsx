@@ -12,6 +12,7 @@ import {
 import { MdOutlineArchitecture, MdOutlineSource } from 'react-icons/md'
 import api from '../../../services/api'
 import { useAuth } from '../../../context/AuthContext'
+import { CategoryQuestionManagerModal } from './CategoryQuestionManagerModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -254,6 +255,7 @@ export const CreateLead: React.FC = () => {
   const [isUploadingGeneral, setIsUploadingGeneral] = useState(false)
   const [uploadingFields, setUploadingFields] = useState<Record<string, boolean>>({})
   const [selectedServices, setSelectedServices] = useState<string[]>([])
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [dbBranches, setDbBranches] = useState<any[]>([])
@@ -304,30 +306,29 @@ export const CreateLead: React.FC = () => {
   const [templateFields, setTemplateFields] = useState<DBCategoryTemplateField[]>([])
   const [loadingFields, setLoadingFields] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
 
   const findMatchingCategory = (projectType: string, categories: DBProjectCategory[]): DBProjectCategory | undefined => {
-    if (!projectType || categories.length === 0) return undefined
+    if (!projectType || !Array.isArray(categories) || categories.length === 0) return undefined
 
     const pTypeClean = projectType.trim().toLowerCase()
     const pTypeUpper = projectType.trim().toUpperCase().replace(/\s+/g, '_')
 
     // 1. Direct ID match
-    const byId = categories.find((c) => c.id.toString() === projectType)
+    const byId = categories.find((c) => c?.id?.toString() === projectType)
     if (byId) return byId
 
     // 2. Exact Code match (case-insensitive)
-    const byExactCode = categories.find((c) => c.code.toUpperCase() === pTypeUpper)
+    const byExactCode = categories.find((c) => c?.code && c.code.toUpperCase() === pTypeUpper)
     if (byExactCode) return byExactCode
 
     // 3. Exact Name match (case-insensitive)
-    const byExactName = categories.find((c) => c.name.trim().toLowerCase() === pTypeClean)
+    const byExactName = categories.find((c) => c?.name && c.name.trim().toLowerCase() === pTypeClean)
     if (byExactName) return byExactName
 
     // 4. Normalized Code match (e.g. 'HOSPITAL' vs 'HOSPITALS', 'SCHOOL' vs 'SCHOOLS')
-    const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '')
+    const normalize = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '')
     const normPType = normalize(projectType)
-    const byNormCode = categories.find((c) => normalize(c.code) === normPType)
+    const byNormCode = categories.find((c) => c?.code && normalize(c.code) === normPType)
     if (byNormCode) return byNormCode
 
     // 5. Synonym / Keyword dictionary mapping
@@ -345,20 +346,23 @@ export const CreateLead: React.FC = () => {
 
     const synonyms = SYNONYMS[normPType] || [normPType]
     const bySynonym = categories.find((c) => {
-      const catCodeNorm = normalize(c.code)
-      const catNameLower = c.name.toLowerCase()
-      return synonyms.some((syn) => catCodeNorm.includes(syn) || catNameLower.includes(syn))
+      const catCodeNorm = normalize(c?.code || '')
+      const catNameLower = (c?.name || '').toLowerCase()
+      return synonyms.some((syn) => (catCodeNorm && catCodeNorm.includes(syn)) || (catNameLower && catNameLower.includes(syn)))
     })
     if (bySynonym) return bySynonym
 
     // 6. Name or Code partial match (starts with or includes)
-    const byNameInclude = categories.find(
-      (c) =>
-        c.name.toLowerCase().startsWith(pTypeClean) ||
-        c.name.toLowerCase().includes(pTypeClean) ||
-        pTypeClean.includes(c.name.toLowerCase().split(' ')[0]) ||
-        c.code.toLowerCase().includes(pTypeClean)
-    )
+    const byNameInclude = categories.find((c) => {
+      const catNameLower = (c?.name || '').toLowerCase()
+      const catCodeLower = (c?.code || '').toLowerCase()
+      return (
+        (catNameLower && catNameLower.startsWith(pTypeClean)) ||
+        (catNameLower && catNameLower.includes(pTypeClean)) ||
+        (catNameLower && pTypeClean.includes(catNameLower.split(' ')[0])) ||
+        (catCodeLower && catCodeLower.includes(pTypeClean))
+      )
+    })
     if (byNameInclude) return byNameInclude
 
     return undefined
@@ -367,8 +371,10 @@ export const CreateLead: React.FC = () => {
   const fetchCategories = useCallback(async () => {
     try {
       const response = await api.get<{ success: boolean; data: DBProjectCategory[] }>('/leads/categories')
-      if (response.data?.success) {
+      if (response.data?.success && Array.isArray(response.data.data)) {
         setDbCategories(response.data.data)
+      } else if (Array.isArray(response.data)) {
+        setDbCategories(response.data)
       }
     } catch (err: any) {
       console.error('Failed to fetch categories:', err)
@@ -385,26 +391,33 @@ export const CreateLead: React.FC = () => {
     const fetchData = async () => {
       try {
         const [branchesRes, employeesRes, companiesRes] = await Promise.all([
-          api.get('/branches'),
-          api.get('/employees'),
+          api.get('/branches').catch(() => ({ data: [] })),
+          api.get('/employees').catch(() => ({ data: [] })),
           api.get('/companies').catch(() => ({ data: [] }))
         ])
-        const branches = branchesRes.data || []
+
+        const extractArray = (resData: any) => {
+          if (Array.isArray(resData)) return resData
+          if (resData && Array.isArray(resData.data)) return resData.data
+          return []
+        }
+
+        const branches = extractArray(branchesRes.data)
+        const employees = extractArray(employeesRes.data)
+        const companies = extractArray(companiesRes.data)
+
         setDbBranches(branches)
-        setDbEmployees(employeesRes.data || [])
+        setDbEmployees(employees)
 
         // Set default branch
         if (user?.role === 'Branch' && user?.name) {
           setValue('branch', user.name)
           setValue('branchId', user.id)
-        } else {
-          setValue('branch', '')
-          setValue('branchId', null)
         }
 
         // Determine company name
         if (user) {
-          const matched = (companiesRes.data || []).find((c: any) => c.companyId === user.companyId)
+          const matched = companies.find((c: any) => c.companyId === user.companyId || c.id === user.companyId)
           if (matched) {
             setCompanyName(matched.name)
           } else if (user.role === 'Company') {
@@ -2148,6 +2161,11 @@ export const CreateLead: React.FC = () => {
         </div>
       </form>
 
+      <CategoryQuestionManagerModal
+        isOpen={isManageModalOpen}
+        onClose={() => setIsManageModalOpen(false)}
+        onUpdated={fetchCategories}
+      />
     </div>
   )
 }
