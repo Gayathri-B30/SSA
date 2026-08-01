@@ -304,6 +304,7 @@ export const CreateLead: React.FC = () => {
   const [templateFields, setTemplateFields] = useState<DBCategoryTemplateField[]>([])
   const [loadingFields, setLoadingFields] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
 
   const findMatchingCategory = (projectType: string, categories: DBProjectCategory[]): DBProjectCategory | undefined => {
     if (!projectType || categories.length === 0) return undefined
@@ -1257,7 +1258,7 @@ export const CreateLead: React.FC = () => {
               <div className="flex justify-end mb-3">
                 <button
                   type="button"
-                  onClick={() => navigate('/crm/leads/categories-questions')}
+                  onClick={() => setIsManageModalOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[#33a18a] text-xs font-bold transition-all cursor-pointer shadow-xs border border-slate-200 dark:border-slate-700"
                 >
                   <FiPlusCircle className="w-3.5 h-3.5" />
