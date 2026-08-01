@@ -12,12 +12,130 @@ export class LeadService {
     return await this.leadRepository.findAllCategories();
   }
 
+  async createCategory(data: { name: string; code?: string; description?: string }, userRole: string) {
+    if (userRole !== 'Company' && userRole !== 'Super Admin') {
+      throw new Error('Unauthorized: Only Company Admin or Super Admin can create project categories.');
+    }
+    if (!data.name || !data.name.trim()) {
+      throw new Error('Category name is required.');
+    }
+    
+    // Generate uppercase code if not provided
+    let code = data.code ? data.code.toUpperCase().replace(/\s+/g, '_') : data.name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    code = code.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+
+    const existing = await this.leadRepository.findCategoryByCode(code);
+    if (existing) {
+      code = `${code}_${Date.now().toString().slice(-4)}`;
+    }
+
+    return await this.leadRepository.createCategory({
+      name: data.name.trim(),
+      code,
+      description: data.description?.trim() || ''
+    });
+  }
+
+  async updateCategory(id: number, data: { name?: string; description?: string }, userRole: string) {
+    if (userRole !== 'Company' && userRole !== 'Super Admin') {
+      throw new Error('Unauthorized: Only Company Admin or Super Admin can edit project categories.');
+    }
+    return await this.leadRepository.updateCategory(id, data);
+  }
+
+  async deleteCategory(id: number, userRole: string) {
+    if (userRole !== 'Company' && userRole !== 'Super Admin') {
+      throw new Error('Unauthorized: Only Company Admin or Super Admin can delete project categories.');
+    }
+    return await this.leadRepository.deleteCategory(id);
+  }
+
   async getTemplateFields(categoryId: number) {
     const category = await this.leadRepository.findCategoryById(categoryId);
     if (!category) {
       throw new Error(`Category with ID ${categoryId} not found.`);
     }
     return await this.leadRepository.findTemplateFieldsByCategoryId(categoryId);
+  }
+
+  async createTemplateField(
+    data: {
+      categoryId: number;
+      fieldName: string;
+      fieldKey?: string;
+      fieldType: 'text' | 'number' | 'single-select' | 'multi-select' | 'yes-no' | 'attachment';
+      fieldOptions?: string[];
+      section: string;
+      capturedAtStage?: 'Lead' | 'Requirement Collection' | 'Client Brief';
+      isRequired?: boolean;
+      displayOrder?: number;
+    },
+    userRole: string
+  ) {
+    if (userRole !== 'Company' && userRole !== 'Super Admin') {
+      throw new Error('Unauthorized: Only Company Admin or Super Admin can add lead questions.');
+    }
+    if (!data.categoryId) {
+      throw new Error('Category ID is required.');
+    }
+    if (!data.fieldName || !data.fieldName.trim()) {
+      throw new Error('Question / Field Name is required.');
+    }
+    if (!data.section || !data.section.trim()) {
+      throw new Error('Section name is required.');
+    }
+
+    const category = await this.leadRepository.findCategoryById(data.categoryId);
+    if (!category) {
+      throw new Error(`Category with ID ${data.categoryId} not found.`);
+    }
+
+    // Auto-generate camelCase fieldKey if not explicitly specified
+    let fieldKey = data.fieldKey ? data.fieldKey.trim() : data.fieldName.replace(/[^a-zA-Z0-9]/g, ' ').split(' ').map((word, index) => index === 0 ? word.toLowerCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join('');
+    if (!fieldKey) fieldKey = `custom_${Date.now()}`;
+
+    const existingFields = await this.leadRepository.findTemplateFieldsByCategoryId(data.categoryId);
+    if (existingFields.some(f => f.fieldKey === fieldKey)) {
+      fieldKey = `${fieldKey}_${Date.now().toString().slice(-4)}`;
+    }
+
+    return await this.leadRepository.createTemplateField({
+      categoryId: data.categoryId,
+      fieldKey,
+      fieldName: data.fieldName.trim(),
+      fieldType: data.fieldType || 'text',
+      fieldOptions: data.fieldOptions || [],
+      section: data.section.trim(),
+      capturedAtStage: data.capturedAtStage || 'Requirement Collection',
+      isRequired: !!data.isRequired,
+      displayOrder: data.displayOrder ?? (existingFields.length + 1)
+    });
+  }
+
+  async updateTemplateField(
+    id: number,
+    data: {
+      fieldName?: string;
+      fieldType?: 'text' | 'number' | 'single-select' | 'multi-select' | 'yes-no' | 'attachment';
+      fieldOptions?: string[];
+      section?: string;
+      capturedAtStage?: 'Lead' | 'Requirement Collection' | 'Client Brief';
+      isRequired?: boolean;
+      displayOrder?: number;
+    },
+    userRole: string
+  ) {
+    if (userRole !== 'Company' && userRole !== 'Super Admin') {
+      throw new Error('Unauthorized: Only Company Admin or Super Admin can edit lead questions.');
+    }
+    return await this.leadRepository.updateTemplateField(id, data);
+  }
+
+  async deleteTemplateField(id: number, userRole: string) {
+    if (userRole !== 'Company' && userRole !== 'Super Admin') {
+      throw new Error('Unauthorized: Only Company Admin or Super Admin can delete lead questions.');
+    }
+    return await this.leadRepository.deleteTemplateField(id);
   }
 
   async createLead(
@@ -210,7 +328,7 @@ export class LeadService {
       // Design preferences
       'styleReferencesInspiration', 'sustainabilityGoals', 'vaastuOrientationRequirements', 'materialPreferences',
       // Assignment & status
-      'assignedEmployee', 'branch', 'branchId', 'remarks', 'status',
+      'assignedEmployee', 'branch', 'branchId', 'remarks', 'status', 'attachments',
     ];
 
     for (const key of mutableFields) {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { SuperadminSidebar } from '../../components/SuperadminSidebar'
 import { useTheme } from '../../utils/theme'
 import type { ThemeMode } from '../../utils/themeConfig'
@@ -360,7 +360,7 @@ export const AddCompany: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-screen bg-brand-bg text-brand-charcoal font-sans flex overflow-x-hidden">
+    <div className="flex h-screen w-full bg-brand-bg text-brand-charcoal font-sans overflow-hidden">
       
       {/* ── SIDEBAR ── */}
       <SuperadminSidebar 
@@ -372,21 +372,28 @@ export const AddCompany: React.FC = () => {
       />
 
       {/* ── MAIN CONTENT AREA ── */}
-      <div className={`flex-grow min-h-screen flex flex-col w-full transition-all duration-300 ${
-        isSidebarCollapsed ? 'ml-0 md:ml-20 md:w-[calc(100vw-80px)]' : 'ml-0 md:ml-64 md:w-[calc(100vw-256px)]'
+      <div className={`flex-1 flex flex-col h-screen overflow-y-auto min-w-0 transition-all duration-300 ${
+        isSidebarCollapsed ? 'ml-0 md:ml-20' : 'ml-0 md:ml-64'
       }`}>
         
         {/* Top Navbar */}
-        <header className={`h-16 bg-white border-b border-zinc-200/80 px-4 md:px-8 flex items-center justify-between fixed top-0 right-0 left-0 transition-all duration-300 z-20 shadow-sm shrink-0 ${
-          isSidebarCollapsed ? 'md:left-20' : 'md:left-64'
-        }`}>
-          <div>
+        <header className="h-16 bg-white border-b border-border-base px-4 md:px-8 flex items-center justify-between sticky top-0 transition-all duration-300 z-20 shadow-sm shrink-0">
+          <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 -ml-2 text-zinc-500 hover:text-zinc-800 rounded-lg transition-colors cursor-pointer md:hidden"
             >
               <Menu className="w-5 h-5" />
             </button>
+
+            {/* Breadcrumb in Nav Bar */}
+            <div className="hidden sm:flex items-center gap-2 text-xs font-extrabold text-zinc-400 select-none">
+              <Link to="/superadmin/dashboard" className="hover:text-brand-primary transition-colors cursor-pointer">Home</Link>
+              <span>/</span>
+              <Link to="/superadmin/dashboard?tab=company" className="hover:text-brand-primary transition-colors cursor-pointer">Company</Link>
+              <span>/</span>
+              <span className="text-brand-primary">Register</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-5">
@@ -404,7 +411,7 @@ export const AddCompany: React.FC = () => {
             </div>
 
             {/* Theme Toggle Button Group */}
-            <div className="flex items-center gap-1 bg-zinc-100 border border-zinc-200/80 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-zinc-100 border border-border-base p-1 rounded-xl">
               {[
                 { mode: 'light', icon: '☀️', title: 'Light' },
                 { mode: 'dark', icon: '🌙', title: 'Dark' },
@@ -418,7 +425,7 @@ export const AddCompany: React.FC = () => {
                     title={title}
                     className={`w-6 h-6 rounded-lg text-[10px] flex items-center justify-center transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-white text-brand-primary shadow-sm border border-zinc-200/50'
+                        ? 'bg-white text-brand-primary shadow-sm border border-border-base'
                         : 'text-zinc-400 hover:text-zinc-600'
                     }`}
                   >
@@ -432,7 +439,7 @@ export const AddCompany: React.FC = () => {
 
             {/* Profile Dropdown */}
             <div className="flex items-center gap-3 cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 border border-zinc-200">
+              <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 border border-border-base">
                 <Users className="w-4 h-4" />
               </div>
               <span className="text-xs font-black text-zinc-800">Super Admin</span>
@@ -445,7 +452,7 @@ export const AddCompany: React.FC = () => {
               <div className="fixed inset-0 z-30" onClick={() => setShowNotifications(false)} />
               
               {/* Dropdown panel */}
-              <div className="fixed md:absolute top-16 right-4 left-4 md:left-auto md:right-8 mt-1 w-auto md:w-80 bg-white border border-zinc-200 shadow-2xl rounded-2xl z-40 overflow-hidden py-1 text-left animate-fade-in">
+              <div className="fixed md:absolute top-16 right-4 left-4 md:left-auto md:right-8 mt-1 w-auto md:w-80 bg-white border border-border-base shadow-2xl rounded-2xl z-40 overflow-hidden py-1 text-left animate-fade-in">
                 <div className="px-4 py-2.5 border-b border-zinc-100 flex items-center justify-between">
                   <span className="text-xs font-black text-zinc-800">Notifications</span>
                   <span className="text-[9px] font-black uppercase bg-red-50 text-brand-primary px-2 py-0.5 rounded-full">3 New</span>
@@ -492,26 +499,18 @@ export const AddCompany: React.FC = () => {
         </header>
 
         {/* Page Body */}
-        <main className="flex-grow p-8 pt-24 space-y-6 max-w-[1000px] w-full mx-auto">
+        <main className="flex-grow p-4 sm:p-6 md:p-8 pt-4 sm:pt-6 md:pt-8 space-y-6 max-w-[1000px] w-full mx-auto">
           
-          {/* Breadcrumb & Navigation */}
+          {/* Title Header */}
           <div className="flex items-center justify-between shrink-0">
             <div className="text-left space-y-1">
-              <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Register New Company</h2>
+              <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Register New Company</h2>
               <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Setup tenant details</p>
-            </div>
-            
-            <div className="text-xs font-bold text-zinc-400 flex items-center gap-2 select-none">
-              <span>Home</span>
-              <span>/</span>
-              <span>Company</span>
-              <span>/</span>
-              <span className="text-brand-primary">Add New</span>
             </div>
           </div>
 
           {/* Form Card */}
-          <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-[0_8px_32px_rgba(0,0,0,0.03)] p-8 md:p-10 text-left">
+          <div className="bg-white rounded-2xl border border-border-base shadow-[0_8px_32px_rgba(0,0,0,0.03)] p-4 sm:p-6 md:p-10 text-left">
             <form onSubmit={handleSubmit} className="space-y-6">
               
               {/* Form Section 1: General Company Info */}
@@ -805,19 +804,19 @@ export const AddCompany: React.FC = () => {
               )}
 
               {/* Actions button footer */}
-              <div className="flex gap-4 pt-6 border-t border-zinc-100 justify-end">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 pt-6 border-t border-zinc-100 sm:justify-end">
                 <button
                   type="button"
                   disabled={isLoading}
                   onClick={() => navigate('/superadmin/dashboard?tab=company')}
-                  className="px-6 py-3 bg-brand-cancel hover:bg-brand-cancel-hover text-black text-xs font-black rounded-xl uppercase transition-colors tracking-wide cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-6 py-3 bg-brand-cancel hover:bg-brand-cancel-hover text-black text-xs font-black rounded-xl uppercase transition-colors tracking-wide cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-8 py-3 bg-brand-primary hover:bg-primary-600 text-white text-xs font-black rounded-xl uppercase shadow-lg shadow-brand-primary/20 transition-all tracking-wide cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-8 py-3 bg-brand-primary hover:bg-primary-600 text-white text-xs font-black rounded-xl uppercase shadow-lg shadow-brand-primary/20 transition-all tracking-wide cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-center"
                 >
                   {isLoading ? 'Creating...' : 'Create Company'}
                 </button>

@@ -9,6 +9,8 @@ import {
 } from '../../data/mockData'
 import { Plus, UserCheck, Sparkles, Phone, Mail, Calendar, RefreshCcw, Trash2, Eye, User, MapPin, Layers, Globe, FileText, Activity, Briefcase, Edit2 } from 'lucide-react'
 import api from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
+import { CategoryQuestionManagerModal } from './leads/CategoryQuestionManagerModal'
 
 interface CRMProps {
   defaultTab?: 'leads' | 'opportunities' | 'clients'
@@ -27,24 +29,29 @@ interface LeadFormInputs {
 
 export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'leads' | 'opportunities' | 'clients'>(defaultTab)
 
   useEffect(() => {
     setActiveTab(defaultTab)
   }, [defaultTab])
+
   const [leads, setLeads] = useState<Lead[]>([])
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [loadingLeads, setLoadingLeads] = useState(false)
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
 
 
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false)
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null)
   const [selectedLeadDetails, setSelectedLeadDetails] = useState<any | null>(null)
-
+  const [_, setIsLoadingDetails] = useState(false)
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<LeadFormInputs>({ mode: 'onChange' })
 
   const fetchData = async () => {
+    setLoadingLeads(true)
     try {
       const response = await api.get('/leads')
       if (response.data?.success) {
@@ -120,6 +127,8 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
       }
     } catch (err) {
       console.error('Failed to fetch CRM data:', err)
+    } finally {
+      setLoadingLeads(false)
     }
   }
 
@@ -199,6 +208,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
 
   const viewLeadDetails = async (lead: Lead) => {
     if (lead.dbId) {
+      setIsLoadingDetails(true)
       setSelectedLeadDetails({ ...lead, loading: true })
       try {
         const response = await api.get(`/leads/${lead.dbId}`)
@@ -210,6 +220,8 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
       } catch (err) {
         console.error('Failed to fetch lead details:', err)
         setSelectedLeadDetails(lead)
+      } finally {
+        setIsLoadingDetails(false)
       }
     } else {
       setSelectedLeadDetails(lead)
@@ -232,12 +244,23 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
           <p className="text-sm text-brand-gray mt-1">Acquire prospective leads, track opportunities, and view active client agreements.</p>
         </div>
         {activeTab === 'leads' && (
-          <button
-            onClick={() => navigate('/crm/leads/create')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary text-xs font-extrabold text-white shadow-md shadow-brand-primary/20 transition-all duration-200 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" /> Create Lead
-          </button>
+          <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+            {(user?.role === 'Company' || user?.role === 'Super Admin') && (
+              <button
+                type="button"
+                onClick={() => navigate('/crm/leads/categories-questions')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 transition-all duration-200 cursor-pointer shadow-xs"
+              >
+                <Layers className="w-4 h-4 text-brand-primary" /> Manage Categories & Questions
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/crm/leads/create')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary text-xs font-extrabold text-white shadow-md shadow-brand-primary/20 transition-all duration-200 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Create Lead
+            </button>
+          </div>
         )}
       </div>
 
@@ -277,192 +300,237 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
 
       {/* 1. LEADS VIEW */}
       {activeTab === 'leads' && (
-        <div className="glass-card rounded-2xl border border-slate-200/80 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-brand-charcoal">
-              <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
-                <tr className="border-b border-slate-200">
-                  <th className="p-4 font-semibold">Lead ID</th>
-                  <th className="p-4 font-semibold">Project Prospect / Lead</th>
-                  <th className="p-4 font-semibold">Contact Details</th>
-                  <th className="p-4 font-semibold">Source</th>
-                  <th className="p-4 font-semibold">Assigned Owner</th>
-                  <th className="p-4 font-semibold">Pipeline Status</th>
-                  <th className="p-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {leads.map((l) => (
-                  <tr key={l.id} className="hover:bg-white/10 transition-colors">
-                    <td className="p-4 font-mono font-bold text-brand-primary">{l.id}</td>
-                    <td className="p-4">
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-brand-charcoal">{l.leadName}</span>
-                        <p className="text-[10px] text-gray-500 uppercase">{l.company}</p>
-                      </div>
-                    </td>
-                    <td className="p-4 space-y-0.5 text-brand-gray">
-                      <p className="text-brand-charcoal font-semibold">{l.contactPerson}</p>
-                      <p className="flex items-center gap-1"><Phone className="w-3 h-3 text-brand-primary" /> {l.mobile}</p>
-                    </td>
-                    <td className="p-4">{l.source}</td>
-                    <td className="p-4 font-medium text-brand-charcoal">{l.assignedTo}</td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${['won', 'qualified'].includes((l.status || '').toLowerCase())
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : ['negotiation', 'proposal sent', 'requirement collection'].includes((l.status || '').toLowerCase())
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : (l.status || '').toLowerCase() === 'draft'
-                              ? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-                              : 'bg-slate-800 text-brand-gray border border-slate-700'
-                          }`}
-                      >
-                        {l.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {l.status === 'Qualified' && (
-                          <button
-                            onClick={() => initiateConvertWorkflow(l)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-primary hover:bg-brand-primary text-[10px] font-extrabold text-brand-charcoal transition-colors cursor-pointer"
-                            title="Convert to Client"
-                          >
-                            <UserCheck className="w-3 h-3" /> Convert
-                          </button>
-                        )}
-                        <button
-                          onClick={() => viewLeadDetails(l)}
-                          className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors cursor-pointer"
-                          title="View Lead Details"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => navigate(`/crm/leads/edit/${l.dbId}`)}
-                          className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors cursor-pointer"
-                          title="Edit Lead Details"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => deleteLead(l.id)}
-                          className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-500/10 bg-transparent transition-colors cursor-pointer"
-                          title="Delete Lead"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        loadingLeads ? (
+          <div className="py-12 flex flex-col justify-center items-center gap-2 bg-white rounded-2xl border border-slate-200">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading Leads...</span>
           </div>
-        </div>
+        ) : (
+          <div className="glass-card rounded-2xl border border-slate-200/80 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-brand-charcoal">
+                <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
+                  <tr className="border-b border-slate-200">
+                    <th className="p-4 font-semibold">Lead ID</th>
+                    <th className="p-4 font-semibold">Project Prospect / Lead</th>
+                    <th className="p-4 font-semibold">Contact Details</th>
+                    <th className="p-4 font-semibold">Source</th>
+                    <th className="p-4 font-semibold">Assigned Owner</th>
+                    <th className="p-4 font-semibold">Pipeline Status</th>
+                    <th className="p-4 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {leads.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400 font-semibold uppercase tracking-wider">
+                        No data available
+                      </td>
+                    </tr>
+                  ) : (
+                    leads.map((l) => (
+                      <tr key={l.id} className="hover:bg-white/10 transition-colors">
+                        <td className="p-4 font-mono font-bold text-brand-primary">{l.id}</td>
+                        <td className="p-4">
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-brand-charcoal">{l.leadName}</span>
+                            <p className="text-[10px] text-gray-500 uppercase">{l.company}</p>
+                          </div>
+                        </td>
+                        <td className="p-4 space-y-0.5 text-brand-gray">
+                          <p className="text-brand-charcoal font-semibold">{l.contactPerson}</p>
+                          <p className="flex items-center gap-1"><Phone className="w-3 h-3 text-brand-primary" /> {l.mobile}</p>
+                        </td>
+                        <td className="p-4">{l.source}</td>
+                        <td className="p-4 font-medium text-brand-charcoal">{l.assignedTo}</td>
+                        <td className="p-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${['won', 'qualified'].includes((l.status || '').toLowerCase())
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : ['negotiation', 'proposal sent', 'requirement collection'].includes((l.status || '').toLowerCase())
+                                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                  : (l.status || '').toLowerCase() === 'draft'
+                                    ? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                                    : 'bg-slate-800 text-brand-gray border border-slate-700'
+                              }`}
+                          >
+                            {l.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {l.status === 'Qualified' && (
+                              <button
+                                onClick={() => initiateConvertWorkflow(l)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-primary hover:bg-brand-primary text-[10px] font-extrabold text-brand-charcoal transition-colors cursor-pointer"
+                                title="Convert to Client"
+                              >
+                                <UserCheck className="w-3 h-3" /> Convert
+                              </button>
+                            )}
+                            <button
+                              onClick={() => viewLeadDetails(l)}
+                              className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors cursor-pointer"
+                              title="View Lead Details"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/crm/leads/edit/${l.dbId}`)}
+                              className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors cursor-pointer"
+                              title="Edit Lead Details"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => deleteLead(l.id)}
+                              className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-500/10 bg-transparent transition-colors cursor-pointer"
+                              title="Delete Lead"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
       {/* 2. OPPORTUNITIES VIEW */}
       {activeTab === 'opportunities' && (
-        <div className="glass-card rounded-2xl border border-slate-200/80 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-brand-charcoal">
-              <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
-                <tr className="border-b border-slate-200">
-                  <th className="p-4 font-semibold">Deal ID</th>
-                  <th className="p-4 font-semibold">Opportunity Name</th>
-                  <th className="p-4 font-semibold">Prospective Company</th>
-                  <th className="p-4 font-semibold">Est. Deal Value</th>
-                  <th className="p-4 font-semibold">Probability</th>
-                  <th className="p-4 font-semibold">Expected Closure</th>
-                  <th className="p-4 font-semibold">Deal Stage</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {opportunities.map((opp) => (
-                  <tr key={opp.id} className="hover:bg-white/10 transition-colors">
-                    <td className="p-4 font-mono font-bold text-brand-primary">{opp.id}</td>
-                    <td className="p-4 font-bold text-brand-charcoal">{opp.leadName}</td>
-                    <td className="p-4 text-brand-gray">{opp.company}</td>
-                    <td className="p-4 font-extrabold text-brand-charcoal">
-                      ₹{(opp.opportunityValue / 100000).toFixed(1)} Lakhs
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-brand-primary h-full rounded-full" style={{ width: `${opp.probability}%` }} />
-                        </div>
-                        <span className="font-extrabold text-brand-charcoal">{opp.probability}%</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1 text-brand-gray">
-                        <Calendar className="w-3.5 h-3.5 text-brand-primary" />
-                        <span>{opp.expectedClosureDate}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] bg-brand-primary/10 text-brand-primary font-bold border border-brand-primary/20">
-                        {opp.stage}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        loadingLeads ? (
+          <div className="py-12 flex flex-col justify-center items-center gap-2 bg-white rounded-2xl border border-slate-200">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading Opportunities...</span>
           </div>
-        </div>
+        ) : (
+          <div className="glass-card rounded-2xl border border-slate-200/80 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-brand-charcoal">
+                <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
+                  <tr className="border-b border-slate-200">
+                    <th className="p-4 font-semibold">Deal ID</th>
+                    <th className="p-4 font-semibold">Opportunity Name</th>
+                    <th className="p-4 font-semibold">Prospective Company</th>
+                    <th className="p-4 font-semibold">Est. Deal Value</th>
+                    <th className="p-4 font-semibold">Probability</th>
+                    <th className="p-4 font-semibold">Expected Closure</th>
+                    <th className="p-4 font-semibold">Deal Stage</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {opportunities.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400 font-semibold uppercase tracking-wider">
+                        No data available
+                      </td>
+                    </tr>
+                  ) : (
+                    opportunities.map((opp) => (
+                      <tr key={opp.id} className="hover:bg-white/10 transition-colors">
+                        <td className="p-4 font-mono font-bold text-brand-primary">{opp.id}</td>
+                        <td className="p-4 font-bold text-brand-charcoal">{opp.leadName}</td>
+                        <td className="p-4 text-brand-gray">{opp.company}</td>
+                        <td className="p-4 font-extrabold text-brand-charcoal">
+                          ₹{(opp.opportunityValue / 100000).toFixed(1)} Lakhs
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                              <div className="bg-brand-primary h-full rounded-full" style={{ width: `${opp.probability}%` }} />
+                            </div>
+                            <span className="font-extrabold text-brand-charcoal">{opp.probability}%</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-1 text-brand-gray">
+                            <Calendar className="w-3.5 h-3.5 text-brand-primary" />
+                            <span>{opp.expectedClosureDate}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] bg-brand-primary/10 text-brand-primary font-bold border border-brand-primary/20">
+                            {opp.stage}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
       {/* 3. CLIENTS VIEW */}
       {activeTab === 'clients' && (
-        <div className="glass-card rounded-2xl border border-slate-200/80 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-brand-charcoal">
-              <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
-                <tr className="border-b border-slate-200">
-                  <th className="p-4 font-semibold">Client ID</th>
-                  <th className="p-4 font-semibold">Developer Representative</th>
-                  <th className="p-4 font-semibold">Company Account</th>
-                  <th className="p-4 font-semibold">Active Contacts</th>
-                  <th className="p-4 font-semibold">Contract Portfolio Value</th>
-                  <th className="p-4 font-semibold">Agreement Status</th>
-                  <th className="p-4 font-semibold text-center">Projects</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {clients.map((c) => (
-                  <tr key={c.id} className="hover:bg-white/10 transition-colors">
-                    <td className="p-4 font-mono font-bold text-brand-primary">{c.id}</td>
-                    <td className="p-4 font-bold text-brand-charcoal">{c.clientName}</td>
-                    <td className="p-4 font-medium text-brand-charcoal">{c.company}</td>
-                    <td className="p-4 space-y-0.5 text-brand-gray">
-                      <p className="flex items-center gap-1"><Mail className="w-3 h-3 text-brand-primary" /> {c.email}</p>
-                      <p className="flex items-center gap-1"><Phone className="w-3 h-3 text-brand-primary" /> {c.mobile}</p>
-                    </td>
-                    <td className="p-4 font-extrabold text-brand-charcoal">
-                      ₹{(c.contractValue / 10000000).toFixed(2)} Cr
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${c.contractStatus === 'Active'
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : c.contractStatus === 'Completed'
-                            ? 'bg-brand-primary/10 text-brand-gold border border-brand-primary/20'
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          }`}
-                      >
-                        {c.contractStatus}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center font-extrabold text-brand-charcoal">{c.projectsCount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        loadingLeads ? (
+          <div className="py-12 flex flex-col justify-center items-center gap-2 bg-white rounded-2xl border border-slate-200">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading Clients...</span>
           </div>
-        </div>
+        ) : (
+          <div className="glass-card rounded-2xl border border-slate-200/80 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-brand-charcoal">
+                <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
+                  <tr className="border-b border-slate-200">
+                    <th className="p-4 font-semibold">Client ID</th>
+                    <th className="p-4 font-semibold">Developer Representative</th>
+                    <th className="p-4 font-semibold">Company Account</th>
+                    <th className="p-4 font-semibold">Active Contacts</th>
+                    <th className="p-4 font-semibold">Contract Portfolio Value</th>
+                    <th className="p-4 font-semibold">Agreement Status</th>
+                    <th className="p-4 font-semibold text-center">Projects</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {clients.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400 font-semibold uppercase tracking-wider">
+                        No data available
+                      </td>
+                    </tr>
+                  ) : (
+                    clients.map((c) => (
+                      <tr key={c.id} className="hover:bg-white/10 transition-colors">
+                        <td className="p-4 font-mono font-bold text-brand-primary">{c.id}</td>
+                        <td className="p-4 font-bold text-brand-charcoal">{c.clientName}</td>
+                        <td className="p-4 font-medium text-brand-charcoal">{c.company}</td>
+                        <td className="p-4 space-y-0.5 text-brand-gray">
+                          <p className="flex items-center gap-1"><Mail className="w-3 h-3 text-brand-primary" /> {c.email}</p>
+                          <p className="flex items-center gap-1"><Phone className="w-3 h-3 text-brand-primary" /> {c.mobile}</p>
+                        </td>
+                        <td className="p-4 font-extrabold text-brand-charcoal">
+                          ₹{(c.contractValue / 10000000).toFixed(2)} Cr
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${c.contractStatus === 'Active'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : c.contractStatus === 'Completed'
+                                  ? 'bg-brand-primary/10 text-brand-gold border border-brand-primary/20'
+                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              }`}
+                          >
+                            {c.contractStatus}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center font-extrabold text-brand-charcoal">{c.projectsCount}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
       {/* Add Lead Modal */}
@@ -717,7 +785,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
       {selectedLeadDetails && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto no-scrollbar">
           <div className="w-full max-w-4xl bg-bg-panel border border-border-base rounded-3xl shadow-2xl p-6 md:p-8 my-8 relative overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]">
-
+            
             {/* Header */}
             <div className="flex justify-between items-start border-b border-border-base pb-4 mb-6 flex-shrink-0">
               <div className="space-y-1">
@@ -745,34 +813,34 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
               </div>
             ) : (
               <div className="space-y-6 overflow-y-auto flex-grow pr-1 no-scrollbar">
-
+                
                 {/* Information Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+                  
                   {/* Column 1: Client & Contact Info */}
                   <div className="space-y-4">
                     <div className="p-4 rounded-2xl bg-bg-base border border-border-base space-y-3">
                       <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider flex items-center gap-1.5 border-b border-border-base pb-2">
                         <User className="w-4 h-4 text-brand-primary" /> Client & Account Details
                       </h3>
-
+                      
                       <div className="grid grid-cols-3 gap-y-2 text-xs">
                         <span className="text-brand-gray font-medium">Company:</span>
                         <span className="col-span-2 text-brand-charcoal font-bold">{selectedLeadDetails.company || 'N/A'}</span>
-
+                        
                         <span className="text-brand-gray font-medium">Contact Person:</span>
                         <span className="col-span-2 text-brand-charcoal font-semibold">{selectedLeadDetails.contactPerson || selectedLeadDetails.clientName || 'N/A'}</span>
-
+                        
                         <span className="text-brand-gray font-medium">Mobile:</span>
                         <span className="col-span-2 text-brand-charcoal flex items-center gap-1">
                           <Phone className="w-3 h-3 text-brand-primary" /> {selectedLeadDetails.mobile || 'N/A'}
                         </span>
-
+                        
                         <span className="text-brand-gray font-medium">Email:</span>
                         <span className="col-span-2 text-brand-charcoal flex items-center gap-1 truncate">
                           <Mail className="w-3 h-3 text-brand-primary" /> {selectedLeadDetails.email || 'N/A'}
                         </span>
-
+                        
                         <span className="text-brand-gray font-medium">Lead Source:</span>
                         <span className="col-span-2 text-brand-charcoal">{selectedLeadDetails.source || selectedLeadDetails.leadSource || 'N/A'}</span>
 
@@ -785,17 +853,17 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
                       <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider flex items-center gap-1.5 border-b border-border-base pb-2">
                         <MapPin className="w-4 h-4 text-brand-primary" /> Site & Location Details
                       </h3>
-
+                      
                       <div className="grid grid-cols-3 gap-y-2 text-xs">
                         <span className="text-brand-gray font-medium">Site Address:</span>
                         <span className="col-span-2 text-brand-charcoal leading-relaxed">{selectedLeadDetails.siteAddress || 'N/A'}</span>
-
+                        
                         <span className="text-brand-gray font-medium">City:</span>
                         <span className="col-span-2 text-brand-charcoal">{selectedLeadDetails.city || 'N/A'}</span>
-
+                        
                         <span className="text-brand-gray font-medium">State:</span>
                         <span className="col-span-2 text-brand-charcoal">{selectedLeadDetails.state || 'N/A'}</span>
-
+                        
                         <span className="text-brand-gray font-medium">Country:</span>
                         <span className="col-span-2 text-brand-charcoal flex items-center gap-1">
                           <Globe className="w-3.5 h-3.5 text-brand-primary" /> {selectedLeadDetails.country || 'N/A'}
@@ -810,25 +878,25 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
                       <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider flex items-center gap-1.5 border-b border-border-base pb-2">
                         <Layers className="w-4 h-4 text-brand-primary" /> Project Specifications
                       </h3>
-
+                      
                       <div className="grid grid-cols-3 gap-y-2 text-xs">
                         <span className="text-brand-gray font-medium">Project Type:</span>
                         <span className="col-span-2 text-brand-charcoal font-bold">{renderSafeValue(selectedLeadDetails.projectType || 'N/A')}</span>
-
+                        
                         <span className="text-brand-gray font-medium">Sub Type:</span>
                         <span className="col-span-2 text-brand-charcoal">{renderSafeValue(selectedLeadDetails.projectSubType || 'N/A')}</span>
-
+                        
                         <span className="text-brand-gray font-medium">Category:</span>
                         <span className="col-span-2 text-brand-charcoal">{renderSafeValue(selectedLeadDetails.category || 'N/A')}</span>
-
+                        
                         <span className="text-brand-gray font-medium">Survey Number:</span>
                         <span className="col-span-2 text-brand-charcoal font-mono">{selectedLeadDetails.surveyNumber || 'N/A'}</span>
-
+                        
                         <span className="text-brand-gray font-medium">Site Area:</span>
                         <span className="col-span-2 text-brand-charcoal font-semibold">
                           {selectedLeadDetails.siteArea ? `${selectedLeadDetails.siteArea} ${selectedLeadDetails.unit || 'sqft'}` : 'N/A'}
                         </span>
-
+                        
                         <span className="text-brand-gray font-medium">Est. Budget:</span>
                         <span className="col-span-2 text-brand-charcoal font-extrabold text-brand-primary">
                           {selectedLeadDetails.estimatedBudget ? `₹${selectedLeadDetails.estimatedBudget}` : 'N/A'}
@@ -840,14 +908,14 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
                       <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider flex items-center gap-1.5 border-b border-border-base pb-2">
                         <Calendar className="w-4 h-4 text-brand-primary" /> Timeline & Branch
                       </h3>
-
+                      
                       <div className="grid grid-cols-3 gap-y-2 text-xs">
                         <span className="text-brand-gray font-medium">Start Date:</span>
                         <span className="col-span-2 text-brand-charcoal">{selectedLeadDetails.expectedStartDate || 'N/A'}</span>
-
+                        
                         <span className="text-brand-gray font-medium">End Date:</span>
                         <span className="col-span-2 text-brand-charcoal">{selectedLeadDetails.expectedCompletionDate || 'N/A'}</span>
-
+                        
                         <span className="text-brand-gray font-medium">Branch:</span>
                         <span className="col-span-2 text-brand-charcoal flex items-center gap-1">
                           <Briefcase className="w-3.5 h-3.5 text-brand-primary" /> {renderSafeValue(selectedLeadDetails.branch || 'N/A')}
@@ -864,7 +932,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
                     <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider flex items-center gap-1.5 border-b border-border-base pb-2">
                       <Activity className="w-4 h-4 text-brand-primary" /> Captured Requirements & Template Fields
                     </h3>
-
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs">
                       {Object.entries(selectedLeadDetails.categoryValues).map(([key, val]) => (
                         <div key={key} className="flex justify-between py-1 border-b border-border-base last:border-0 md:border-b md:border-border-base">
@@ -908,6 +976,13 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'leads' }) => {
         </div>,
         document.body
       )}
+
+      {/* Category & Question Manager Modal for Company Admin / Super Admin */}
+      <CategoryQuestionManagerModal
+        isOpen={isManageModalOpen}
+        onClose={() => setIsManageModalOpen(false)}
+        onUpdated={fetchData}
+      />
     </div>
   )
 }

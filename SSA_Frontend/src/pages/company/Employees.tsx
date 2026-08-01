@@ -75,6 +75,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
     setActiveTab(defaultTab)
   }, [defaultTab])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [loadingEmployees, setLoadingEmployees] = useState(false)
   const [deleteConfirmEmployee, setDeleteConfirmEmployee] = useState<Employee | null>(null)
 
   const [branchesList, setBranchesList] = useState<{ id: string; name: string; code: string }[]>([])
@@ -97,6 +98,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
   }, [])
 
   const fetchEmployees = async () => {
+    setLoadingEmployees(true)
     try {
       const response = await api.get('/employees')
       const mapped = response.data.map((item: any) => ({
@@ -107,6 +109,8 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
       setEmployees(mapped)
     } catch (err) {
       console.error('Failed to fetch employees:', err)
+    } finally {
+      setLoadingEmployees(false)
     }
   }
   const [leaves, setLeaves] = useState<LeaveRequest[]>(initialLeaves)
@@ -406,163 +410,170 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
           </div>
 
           {/* Data Table */}
-          <div className="glass-card rounded-2xl border border-slate-200/20 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-brand-charcoal">
-                <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
-                  <tr className="border-b border-slate-200/20">
-                    <th className="p-4 font-semibold">Employee ID</th>
-                    <th className="p-4 font-semibold">Name</th>
-                    <th className="p-4 font-semibold">Contact Info</th>
-                    <th className="p-4 font-semibold">Dept & Designation</th>
-                    <th className="p-4 font-semibold">Joining Date</th>
-                    <th className="p-4 font-semibold">Status</th>
-                    <th className="p-4 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/10">
-                  {currentItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="p-8 text-center text-gray-500">
-                        No employees found matching the search criteria.
-                      </td>
+          {loadingEmployees ? (
+            <div className="py-12 flex flex-col justify-center items-center gap-2 bg-white rounded-2xl border border-slate-200">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading Employees...</span>
+            </div>
+          ) : (
+            <div className="glass-card rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-brand-charcoal">
+                  <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
+                    <tr className="border-b border-slate-200">
+                      <th className="p-4 font-semibold">Employee ID</th>
+                      <th className="p-4 font-semibold">Name</th>
+                      <th className="p-4 font-semibold">Contact Info</th>
+                      <th className="p-4 font-semibold">Dept & Designation</th>
+                      <th className="p-4 font-semibold">Joining Date</th>
+                      <th className="p-4 font-semibold">Status</th>
+                      <th className="p-4 font-semibold text-right">Actions</th>
                     </tr>
-                  ) : (
-                    currentItems.map((emp) => (
-                      <tr
-                        key={emp.id}
-                        onClick={() => setSelectedProfile(emp)}
-                        className="hover:bg-slate-50 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-4 font-mono font-bold text-brand-primary">{emp.id}</td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-slate-800 text-brand-primary border border-brand-primary/20 flex items-center justify-center font-bold text-xs">
-                              {emp.name.charAt(0)}
-                            </div>
-                            <span className="font-bold text-brand-charcoal group-hover:text-brand-primary transition-colors">{emp.name}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="space-y-0.5 text-brand-gray">
-                            <p className="truncate">{emp.email}</p>
-                            <p>{emp.phone}</p>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="space-y-0.5">
-                            <p className="text-brand-charcoal font-semibold">{emp.designation}</p>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <p className="text-gray-500 text-[10px] uppercase">{emp.department}</p>
-                              <span className="text-slate-300 text-[10px]">•</span>
-                              <span className="text-brand-primary text-[10px] font-semibold">
-                                {emp.branchId ? (branchesList.find(b => b.id === emp.branchId)?.name || emp.branchId) : 'Headquarters'}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-brand-gray">{emp.joiningDate}</td>
-                        <td className="p-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${emp.status === 'Active'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : emp.status === 'On Leave'
-                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                              }`}
-                          >
-                            <span className={`w-1 h-1 rounded-full ${emp.status === 'Active'
-                              ? 'bg-emerald-400'
-                              : emp.status === 'On Leave'
-                                ? 'bg-amber-400'
-                                : 'bg-red-400'
-                              }`} />
-                            {emp.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => setSelectedProfile(emp)}
-                              className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors"
-                              title="Quick View"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => openEditModal(emp, e)}
-                              className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors"
-                              title="Edit Employee"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => handleDeleteClick(emp, e)}
-                              className="p-1.5 rounded-lg text-red-400 hover:text-brand-charcoal hover:bg-red-500/10 transition-colors"
-                              title="Delete Employee"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {currentItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-gray-500">
+                          No employees found matching the search criteria.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="p-4 border-t border-slate-200 flex items-center justify-between">
-                <span className="text-gray-500 text-xs">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredEmployees.length)} of {filteredEmployees.length} profiles
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    disabled={currentPage === 1}
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    className="p-1.5 rounded-lg bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  {Array.from({ length: totalPages }).map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handlePageChange(idx + 1)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentPage === idx + 1
-                        ? 'bg-brand-primary text-white shadow'
-                        : 'bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal'
-                        }`}
-                    >
-                      {idx + 1}
-                    </button>
-                  ))}
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    className="p-1.5 rounded-lg bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
+                    ) : (
+                      currentItems.map((emp) => (
+                        <tr
+                          key={emp.id}
+                          onClick={() => setSelectedProfile(emp)}
+                          className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                        >
+                          <td className="p-4 font-mono font-bold text-brand-primary">{emp.id}</td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 text-brand-primary border border-brand-primary/20 flex items-center justify-center font-bold text-xs">
+                                {emp.name.charAt(0)}
+                              </div>
+                              <span className="font-bold text-brand-charcoal group-hover:text-brand-primary transition-colors">{emp.name}</span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="space-y-0.5 text-brand-gray">
+                              <p className="truncate">{emp.email}</p>
+                              <p>{emp.phone}</p>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="space-y-0.5">
+                              <p className="text-brand-charcoal font-semibold">{emp.designation}</p>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="text-gray-500 text-[10px] uppercase">{emp.department}</p>
+                                <span className="text-slate-300 text-[10px]">•</span>
+                                <span className="text-brand-primary text-[10px] font-semibold">
+                                  {emp.branchId ? (branchesList.find(b => b.id === emp.branchId)?.name || emp.branchId) : 'Headquarters'}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4 text-brand-gray">{emp.joiningDate}</td>
+                          <td className="p-4">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${emp.status === 'Active'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : emp.status === 'On Leave'
+                                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                }`}
+                            >
+                              <span className={`w-1 h-1 rounded-full ${emp.status === 'Active'
+                                ? 'bg-emerald-400'
+                                : emp.status === 'On Leave'
+                                  ? 'bg-amber-400'
+                                  : 'bg-red-400'
+                                }`} />
+                              {emp.status}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => setSelectedProfile(emp)}
+                                className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors"
+                                title="Quick View"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => openEditModal(emp, e)}
+                                className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors"
+                                title="Edit Employee"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteClick(emp, e)}
+                                className="p-1.5 rounded-lg text-red-400 hover:text-brand-charcoal hover:bg-red-500/10 transition-colors"
+                                title="Delete Employee"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="p-4 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-gray-500 text-xs">
+                    Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredEmployees.length)} of {filteredEmployees.length} profiles
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {Array.from({ length: totalPages }).map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handlePageChange(idx + 1)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentPage === idx + 1
+                          ? 'bg-brand-primary text-white shadow'
+                          : 'bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal'
+                          }`}
+                      >
+                        {idx + 1}
+                      </button>
+                    ))}
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {/* 2. Attendance Tab */}
       {activeTab === 'attendance' && (
-        <div className="glass-card rounded-2xl border border-slate-200/20 overflow-hidden">
-          <div className="p-5 border-b border-slate-200/20 flex justify-between items-center">
+        <div className="glass-card rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="p-5 border-b border-slate-200 flex justify-between items-center">
             <h3 className="text-sm font-extrabold text-brand-charcoal uppercase tracking-wider">Attendance Log (Current Month)</h3>
             <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md">92.5% AVG Attendance</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-brand-charcoal">
               <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
-                <tr className="border-b border-slate-200/20">
+                <tr className="border-b border-slate-200">
                   <th className="p-4 font-semibold">Employee</th>
                   <th className="p-4 font-semibold">Present Days</th>
                   <th className="p-4 font-semibold">Absent Days</th>
@@ -570,7 +581,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
                   <th className="p-4 font-semibold">Status Rating</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200/10">
+              <tbody className="divide-y divide-slate-200">
                 {mockAttendance.map((rec: any) => (
                   <tr key={rec.employeeId} className="hover:bg-white/10 transition-colors">
                     <td className="p-4 font-bold text-brand-charcoal">{rec.name}</td>
@@ -595,14 +606,14 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
       {/* 3. Leave Requests Tab */}
       {activeTab === 'leaves' && (
-        <div className="glass-card rounded-2xl border border-slate-200/20 overflow-hidden">
-          <div className="p-5 border-b border-slate-200/20">
+        <div className="glass-card rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="p-5 border-b border-slate-200">
             <h3 className="text-sm font-extrabold text-brand-charcoal uppercase tracking-wider">Active Leave Requests</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-brand-charcoal">
               <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
-                <tr className="border-b border-slate-200/20">
+                <tr className="border-b border-slate-200">
                   <th className="p-4 font-semibold">Request ID</th>
                   <th className="p-4 font-semibold">Employee Name</th>
                   <th className="p-4 font-semibold">Leave Type</th>
@@ -612,7 +623,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
                   <th className="p-4 font-semibold text-right">Approve Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200/10">
+              <tbody className="divide-y divide-slate-200">
                 {leaves.map((l) => (
                   <tr key={l.id} className="hover:bg-white/10 transition-colors">
                     <td className="p-4 font-mono font-bold text-brand-primary">{l.id}</td>
@@ -799,7 +810,6 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
       {/* Add/Edit Modal */}
       {isModalOpen && (
         <div
-          onClick={() => setIsModalOpen(false)}
           className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-20 md:pt-24 pb-8 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto"
         >
           <div
@@ -822,7 +832,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Full Name */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Employee Name</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Employee Name <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     maxLength={50}
@@ -858,7 +868,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
                 {/* Email */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Work Email</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Work Email <span className="text-red-500">*</span></label>
                   <input
                     type="email"
                     {...register('email', {
@@ -883,7 +893,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
                 {/* Phone */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Mobile Phone</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Mobile Phone <span className="text-red-500">*</span></label>
                   <input
                     type="tel"
                     maxLength={10}
@@ -917,7 +927,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
                 {/* Department */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Department</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Department <span className="text-red-500">*</span></label>
                   <select
                     {...register('department', { required: 'Department is required' })}
                     className={`w-full bg-slate-50 border outline-none rounded-xl px-4 py-2.5 text-xs text-brand-charcoal transition-all ${errors.department
@@ -946,7 +956,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
                 {/* Designation */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Designation</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Designation <span className="text-red-500">*</span></label>
                   <select
                     {...register('designation', { required: 'Designation is required' })}
                     className={`w-full bg-slate-50 border outline-none rounded-xl px-4 py-2.5 text-xs text-brand-charcoal transition-all ${errors.designation
@@ -977,7 +987,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
                 {/* Manager */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Reporting Manager</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Reporting Manager <span className="text-red-500">*</span></label>
                   <select
                     {...register('manager', { required: 'Reporting Manager is required' })}
                     className={`w-full bg-slate-50 border outline-none rounded-xl px-4 py-2.5 text-xs text-brand-charcoal transition-all ${errors.manager
@@ -1005,7 +1015,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
                 {/* Joining Date */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Joining Date</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Joining Date <span className="text-red-500">*</span></label>
                   <input
                     type="date"
                     {...register('joiningDate', { required: 'Date is required' })}
@@ -1026,7 +1036,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
                 {/* Branch / Division */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Branch / Division</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Branch / Division {user?.role !== 'Branch' && <span className="text-red-500">*</span>}</label>
                   <select
                     disabled={user?.role === 'Branch'}
                     {...register('branch', { required: user?.role !== 'Branch' ? 'Branch / Division is required' : false })}
@@ -1055,7 +1065,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
 
                 {/* Status */}
                 <div>
-                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Operational Status</label>
+                  <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Operational Status <span className="text-red-500">*</span></label>
                   <select
                     {...register('status', { required: 'Operational Status is required' })}
                     className={`w-full bg-slate-50 border outline-none rounded-xl px-4 py-2.5 text-xs text-brand-charcoal transition-all ${errors.status

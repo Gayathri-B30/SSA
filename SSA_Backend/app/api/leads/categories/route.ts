@@ -9,3 +9,9 @@ export async function GET(req: NextRequest) {
     return await leadController.getCategories(req);
   });
 }
+
+export async function POST(req: NextRequest) {
+  return await authMiddleware(req, async (user) => {
+    return await leadController.createCategory(req, user);
+  });
+}

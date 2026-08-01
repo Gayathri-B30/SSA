@@ -9,3 +9,9 @@ export async function GET(req: NextRequest) {
     return await leadController.getTemplateFields(req);
   });
 }
+
+export async function POST(req: NextRequest) {
+  return await authMiddleware(req, async (user) => {
+    return await leadController.createTemplateField(req, user);
+  });
+}

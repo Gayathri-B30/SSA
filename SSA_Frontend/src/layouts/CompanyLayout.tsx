@@ -230,7 +230,7 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                   {isExpanded && (!isSidebarCollapsed || isMobile) && (
                     <div className="mt-1 ml-6 pl-2 border-l border-slate-800 space-y-1">
                       {item.subItems?.map((sub) => {
-                        const isSubActive = location.pathname === sub.path
+                        const isSubActive = location.pathname === sub.path || (sub.path && sub.path !== '/' && location.pathname.startsWith(sub.path + '/'))
                         return (
                           <Link
                             key={sub.label}
@@ -374,7 +374,7 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
             {!isSidebarCollapsed && (
               <div className="leading-none text-left">
                 <div className="font-bold text-sm tracking-tight text-white whitespace-nowrap">
-                  SSA ERP
+                  SSA
                 </div>
                 <div className="text-[7px] tracking-widest text-brand-gold mt-0.5 uppercase whitespace-nowrap font-bold">
                   Plan. Design. Deliver.
@@ -457,7 +457,7 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                 </div>
                 <div className="leading-none text-left">
                   <div className="font-bold text-sm tracking-tight text-white whitespace-nowrap">
-                    SSA ERP
+                    SSA
                   </div>
                   <div className="text-[7px] tracking-widest text-brand-gold mt-0.5 uppercase whitespace-nowrap font-bold">
                     Plan. Design. Deliver.

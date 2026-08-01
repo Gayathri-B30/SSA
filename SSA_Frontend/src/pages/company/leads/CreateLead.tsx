@@ -21,6 +21,7 @@ interface UploadedFile {
   size: number
   type: string
   preview?: string
+  url: string
 }
 
 interface DBProjectCategory {
@@ -250,6 +251,8 @@ export const CreateLead: React.FC = () => {
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const [isUploadingGeneral, setIsUploadingGeneral] = useState(false)
+  const [uploadingFields, setUploadingFields] = useState<Record<string, boolean>>({})
   const [selectedServices, setSelectedServices] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -258,7 +261,7 @@ export const CreateLead: React.FC = () => {
   const [companyName, setCompanyName] = useState('Sundar Sundram Architects')
 
   // Auto-generate Lead ID
-  const [leadId, setLeadId] = useState(
+  const [leadId] = useState(
     () => `LD-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000)).padStart(4, '0')}`
   )
 
@@ -301,111 +304,81 @@ export const CreateLead: React.FC = () => {
   const [templateFields, setTemplateFields] = useState<DBCategoryTemplateField[]>([])
   const [loadingFields, setLoadingFields] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
 
-  const getCategoryCode = (projectType: string): string => {
-    const type = projectType.toUpperCase().replace(/\s+/g, '_')
-    if (type === 'SCHOOL') return 'SCHOOLS'
-    if (type === 'HOSPITAL') return 'HOSPITALS'
-    return type
+  const findMatchingCategory = (projectType: string, categories: DBProjectCategory[]): DBProjectCategory | undefined => {
+    if (!projectType || categories.length === 0) return undefined
+
+    const pTypeClean = projectType.trim().toLowerCase()
+    const pTypeUpper = projectType.trim().toUpperCase().replace(/\s+/g, '_')
+
+    // 1. Direct ID match
+    const byId = categories.find((c) => c.id.toString() === projectType)
+    if (byId) return byId
+
+    // 2. Exact Code match (case-insensitive)
+    const byExactCode = categories.find((c) => c.code.toUpperCase() === pTypeUpper)
+    if (byExactCode) return byExactCode
+
+    // 3. Exact Name match (case-insensitive)
+    const byExactName = categories.find((c) => c.name.trim().toLowerCase() === pTypeClean)
+    if (byExactName) return byExactName
+
+    // 4. Normalized Code match (e.g. 'HOSPITAL' vs 'HOSPITALS', 'SCHOOL' vs 'SCHOOLS')
+    const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '')
+    const normPType = normalize(projectType)
+    const byNormCode = categories.find((c) => normalize(c.code) === normPType)
+    if (byNormCode) return byNormCode
+
+    // 5. Synonym / Keyword dictionary mapping
+    const SYNONYMS: Record<string, string[]> = {
+      hospital: ['hospital', 'hospitals', 'healthcare', 'medical', 'clinic', 'health'],
+      healthcare: ['hospital', 'hospitals', 'healthcare', 'medical', 'clinic', 'health'],
+      school: ['school', 'schools', 'education', 'academic'],
+      institutional: ['institution', 'institutional', 'college', 'university', 'academic'],
+      hospitality: ['hospitality', 'hotel', 'resort', 'restaurant'],
+      residential: ['residential', 'residence', 'villa', 'housing', 'home', 'apartment'],
+      commercial: ['commercial', 'office', 'retail', 'mall', 'showroom'],
+      industrial: ['industrial', 'factory', 'warehouse', 'manufacturing', 'plant'],
+      mixed_use: ['mixed', 'mixed-use', 'mixed_use', 'township']
+    }
+
+    const synonyms = SYNONYMS[normPType] || [normPType]
+    const bySynonym = categories.find((c) => {
+      const catCodeNorm = normalize(c.code)
+      const catNameLower = c.name.toLowerCase()
+      return synonyms.some((syn) => catCodeNorm.includes(syn) || catNameLower.includes(syn))
+    })
+    if (bySynonym) return bySynonym
+
+    // 6. Name or Code partial match (starts with or includes)
+    const byNameInclude = categories.find(
+      (c) =>
+        c.name.toLowerCase().startsWith(pTypeClean) ||
+        c.name.toLowerCase().includes(pTypeClean) ||
+        pTypeClean.includes(c.name.toLowerCase().split(' ')[0]) ||
+        c.code.toLowerCase().includes(pTypeClean)
+    )
+    if (byNameInclude) return byNameInclude
+
+    return undefined
   }
 
-  // Fetch lead data for editing
-  useEffect(() => {
-    if (!isEditMode || !id) return
-    const fetchLeadData = async () => {
-      try {
-        const response = await api.get(`/leads/${id}`)
-        const lead = response.data?.success ? response.data.data : response.data
-        if (lead) {
-          setLeadId(lead.leadId || `LD-${lead.id}`)
-
-          setValue('leadTitle', lead.leadTitle || lead.projectName || '')
-          setValue('clientName', lead.clientName || '')
-          setValue('company', lead.company || lead.organisation || '')
-          setValue('contactPerson', lead.contactPerson || '')
-          setValue('mobile', lead.mobile || '')
-          setValue('email', lead.email || '')
-          setValue('leadSource', lead.leadSource || lead.source || '')
-          setValue('projectType', lead.projectType || '')
-          setValue('projectSubType', lead.projectSubType || lead.subType || '')
-          setValue('category', lead.leadCategory || lead.category || '')
-          setValue('siteAddress', lead.siteAddress || lead.locationAddress || '')
-          setValue('city', lead.city || '')
-          setValue('state', lead.state || '')
-          setValue('country', lead.country || 'India')
-          setValue('surveyNumber', lead.surveyNumber || '')
-          setValue('siteArea', lead.siteArea || '')
-          setValue('unit', lead.unit || 'Sq.ft')
-          setValue('estimatedBudget', lead.estimatedBudget || '')
-          setValue('expectedStartDate', lead.expectedStartDate || '')
-          setValue('expectedCompletionDate', lead.expectedCompletionDate || '')
-          setValue('assignedEmployee', lead.assignedEmployee || '')
-          setValue('branch', lead.branch || '')
-          setValue('branchId', lead.branchId || null)
-          setValue('status', lead.status || 'New Lead')
-          setValue('remarks', lead.remarks || '')
-
-          // Extended fields
-          setValue('decisionMakers', lead.decisionMakers || '')
-          setValue('priorProjectsWithSSA', lead.priorProjectsWithSSA || 'No')
-          setValue('landOwnershipDocsAvailable', lead.landOwnershipDocsAvailable || 'Yes')
-          setValue('topographyLevels', lead.topographyLevels || '')
-          setValue('accessRoadWidth', lead.accessRoadWidth || '')
-          setValue('orientation', lead.orientation || '')
-          setValue('existingStructures', lead.existingStructures || 'None')
-          setValue('soilReportAvailable', lead.soilReportAvailable || 'No')
-          setValue('adjacentDevelopments', lead.adjacentDevelopments || '')
-          setValue('ebSupplySanctionedLoad', lead.ebSupplySanctionedLoad || '')
-          setValue('waterSource', lead.waterSource || 'Metro Water')
-          setValue('sewerSeptic', lead.sewerSeptic || 'Public Sewer line')
-          setValue('stormDrainage', lead.stormDrainage || 'Available / Connected')
-          setValue('telecom', lead.telecom || '')
-          setValue('approvingAuthority', lead.approvingAuthority || '')
-          setValue('landUseZoning', lead.landUseZoning || '')
-          setValue('fsiCoverageKnown', lead.fsiCoverageKnown || '')
-          setValue('setbacksHeightRestrictions', lead.setbacksHeightRestrictions || '')
-          setValue('priorApprovalsViolations', lead.priorApprovalsViolations || '')
-          setValue('specialRestrictions', lead.specialRestrictions || '')
-          setValue('expectedFloors', lead.expectedFloors || '')
-          setValue('fundingSource', lead.fundingSource || 'Self Funded')
-          setValue('phasingNeeds', lead.phasingNeeds || 'Single Phase')
-          setValue('contractorStatus', lead.contractorStatus || 'Not Appointed')
-          setValue('preferredVendors', lead.preferredVendors || '')
-          setValue('siteVisitFrequencyExpectation', lead.siteVisitFrequencyExpectation || '')
-          setValue('reportingExpectations', lead.reportingExpectations || '')
-          setValue('styleReferencesInspiration', lead.styleReferencesInspiration || '')
-          setValue('sustainabilityGoals', lead.sustainabilityGoals || '')
-          setValue('vaastuOrientationRequirements', lead.vaastuOrientationRequirements || '')
-          setValue('materialPreferences', lead.materialPreferences || '')
-
-          if (lead.categoryValues) {
-            setValue('categoryValues', lead.categoryValues)
-          }
-          if (lead.servicesRequired) {
-            setSelectedServices(lead.servicesRequired)
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load lead details for editing:', err)
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await api.get<{ success: boolean; data: DBProjectCategory[] }>('/leads/categories')
+      if (response.data?.success) {
+        setDbCategories(response.data.data)
       }
+    } catch (err: any) {
+      console.error('Failed to fetch categories:', err)
     }
-    fetchLeadData()
-  }, [id, isEditMode, setValue])
+  }, [])
 
   // Fetch categories on mount
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await api.get<{ success: boolean; data: DBProjectCategory[] }>('/leads/categories')
-        if (response.data?.success) {
-          setDbCategories(response.data.data)
-        }
-      } catch (err: any) {
-        console.error('Failed to fetch categories:', err)
-      }
-    }
     fetchCategories()
-  }, [])
+  }, [fetchCategories])
 
   // Fetch branches, employees, and company details on mount/user change
   useEffect(() => {
@@ -453,10 +426,7 @@ export const CreateLead: React.FC = () => {
         return
       }
 
-      const mappedCode = getCategoryCode(watchedProjectType)
-      const matchedCategory = dbCategories.find(
-        (cat) => cat.code.toUpperCase() === mappedCode
-      )
+      const matchedCategory = findMatchingCategory(watchedProjectType, dbCategories)
 
       if (!matchedCategory) {
         setTemplateFields([])
@@ -501,31 +471,54 @@ export const CreateLead: React.FC = () => {
 
   // ── Upload Handlers ─────────────────────────────────────────────────────────
 
-  const processFiles = (files: FileList | null) => {
-    if (!files) return
+  const processFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
     const allowed = [
       'image/jpeg', 'image/png', 'image/webp',
       'application/pdf', 'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ]
-    Array.from(files).forEach((file) => {
-      if (!allowed.includes(file.type)) return
-      const id = `${Date.now()}-${Math.random()}`
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setUploadedFiles((prev) => [
-          ...prev,
-          {
-            id,
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            preview: file.type.startsWith('image/') ? (e.target?.result as string) : undefined,
+
+    setIsUploadingGeneral(true)
+    try {
+      for (const file of Array.from(files)) {
+        if (!allowed.includes(file.type)) {
+          alert(`File type "${file.type}" is not supported. Please upload JPG, PNG, PDF, or DOC/DOCX files.`)
+          continue
+        }
+
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await api.post('/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
           },
-        ])
+        })
+
+        if (response.data?.success) {
+          const { url, name, size, type } = response.data
+          setUploadedFiles((prev) => [
+            ...prev,
+            {
+              id: `${Date.now()}-${Math.random()}`,
+              name,
+              size,
+              type,
+              preview: type.startsWith('image/') ? url : undefined,
+              url,
+            },
+          ])
+        } else {
+          alert(`Failed to upload file ${file.name}: ${response.data?.message || 'Unknown error'}`)
+        }
       }
-      reader.readAsDataURL(file)
-    })
+    } catch (err: any) {
+      console.error('Error uploading general attachment:', err)
+      alert(`Error uploading file: ${err.response?.data?.message || err.message}`)
+    } finally {
+      setIsUploadingGeneral(false)
+    }
   }
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -627,32 +620,170 @@ export const CreateLead: React.FC = () => {
             </div>
           </FormField>
         )
-      case 'attachment':
+      case 'attachment': {
+        const fieldKey = `categoryValues.${field.fieldKey}`
+        const fileUrl = watch(fieldKey as any)
+        const isUploading = uploadingFields[field.fieldKey]
+
+        const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+          const files = e.target.files
+          if (!files || files.length === 0) return
+          const selectedFile = files[0]
+
+          const allowed = [
+            'image/jpeg', 'image/png', 'image/webp',
+            'application/pdf', 'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ]
+          if (!allowed.includes(selectedFile.type)) {
+            alert(`File type "${selectedFile.type}" is not supported. Please upload JPG, PNG, PDF, or DOC/DOCX.`)
+            return
+          }
+
+          setUploadingFields((prev) => ({ ...prev, [field.fieldKey]: true }))
+          try {
+            const formData = new FormData()
+            formData.append('file', selectedFile)
+
+            const response = await api.post('/upload', formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            })
+
+            if (response.data?.success) {
+              setValue(fieldKey as any, response.data.url)
+            } else {
+              alert(`Failed to upload file: ${response.data?.message || 'Unknown error'}`)
+            }
+          } catch (err: any) {
+            console.error('Error uploading field attachment:', err)
+            alert(`Error uploading file: ${err.response?.data?.message || err.message}`)
+          } finally {
+            setUploadingFields((prev) => ({ ...prev, [field.fieldKey]: false }))
+          }
+        }
+
+        const handleClearFile = () => {
+          setValue(fieldKey as any, '')
+        }
+
+        const getFileNameFromUrl = (url: string) => {
+          if (!url) return ''
+          try {
+            if (url.startsWith('data:')) return 'Uploaded File'
+            const parts = url.split('/')
+            const rawName = parts[parts.length - 1]
+            return rawName.includes('-') && !isNaN(Number(rawName.split('-')[0]))
+              ? rawName.split('-').slice(1).join('-')
+              : rawName
+          } catch {
+            return 'Uploaded File'
+          }
+        }
+
         return (
           <FormField label={field.fieldName} required={field.isRequired} error={errorMsg}>
-            <input
-              {...register(`categoryValues.${field.fieldKey}`, {
-                required: field.isRequired ? `${field.fieldName} is required` : false
-              })}
-              type="file"
-              className={inputCls}
-            />
+            <div className="relative flex flex-col gap-2 mt-1">
+              {fileUrl ? (
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 group">
+                  <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0">
+                    {fileUrl.match(/\.(jpg|jpeg|png|webp)/i) || fileUrl.includes('image') ? (
+                      <img src={fileUrl} alt="Preview" className="w-10 h-10 rounded-lg object-cover" />
+                    ) : fileUrl.endsWith('.pdf') ? (
+                      <FiFileText size={18} className="text-red-500" />
+                    ) : (
+                      <FiFile size={18} className="text-[#33a18a]" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                      {getFileNameFromUrl(fileUrl)}
+                    </p>
+                    <a
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-[#33a18a] hover:underline font-semibold flex items-center gap-1 mt-0.5"
+                    >
+                      View Document
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearFile}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all cursor-pointer shrink-0"
+                  >
+                    <FiX size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx"
+                    disabled={isUploading}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id={`file-input-${field.fieldKey}`}
+                  />
+                  <label
+                    htmlFor={`file-input-${field.fieldKey}`}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed text-xs font-bold transition-all cursor-pointer select-none bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 ${isUploading
+                      ? 'border-[#33a18a] text-[#33a18a] animate-pulse pointer-events-none'
+                      : 'border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-[#33a18a]/50 hover:text-[#33a18a]'
+                      }`}
+                  >
+                    {isUploading ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4 text-[#33a18a]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Uploading file...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiUploadCloud size={15} />
+                        <span>Upload document ({field.fieldName})</span>
+                      </>
+                    )}
+                  </label>
+                  <input
+                    type="hidden"
+                    {...register(fieldKey as any, {
+                      required: field.isRequired ? `${field.fieldName} is required` : false
+                    })}
+                  />
+                </div>
+              )}
+            </div>
           </FormField>
         )
+      }
       case 'text':
-      default:
+      default: {
+        const hasOptions = field.fieldOptions && field.fieldOptions.length > 0
+        // const exampleHint = hasOptions ? `Examples: ${field.fieldOptions!.join(', ')}` : undefined
         return (
-          <FormField label={field.fieldName} required={field.isRequired} error={errorMsg}>
+          <FormField label={field.fieldName} required={field.isRequired} error={errorMsg} >
             <input
               {...register(`categoryValues.${field.fieldKey}`, {
                 required: field.isRequired ? `${field.fieldName} is required` : false
               })}
               type="text"
-              placeholder={field.fieldName.includes('(') ? `Enter ${field.fieldName}` : `Enter ${field.fieldName.toLowerCase()}`}
+              placeholder={
+                hasOptions
+                  ? `e.g. ${field.fieldOptions!.join(', ')}`
+                  : field.fieldName.includes('(')
+                    ? `Enter ${field.fieldName}`
+                    : `Enter ${field.fieldName.toLowerCase()}`
+              }
               className={inputCls}
             />
           </FormField>
         )
+      }
     }
   }
 
@@ -660,10 +791,7 @@ export const CreateLead: React.FC = () => {
 
   const onSubmit = async (data: LeadFormData) => {
     try {
-      const mappedCode = getCategoryCode(data.projectType)
-      const matchedCategory = dbCategories.find(
-        (cat) => cat.code.toUpperCase() === mappedCode
-      )
+      const matchedCategory = findMatchingCategory(data.projectType, dbCategories)
 
       if (!matchedCategory) {
         alert('Invalid Project Type selected (could not map to database category).')
@@ -681,6 +809,7 @@ export const CreateLead: React.FC = () => {
         clientName: data.clientName,
         status: data.status || 'Lead',
         categoryValues: data.categoryValues || {},
+        attachments: uploadedFiles,
 
         // Legacy composite fields (kept for backward compat — populated from individual columns)
         projectName: data.leadTitle,
@@ -792,10 +921,7 @@ export const CreateLead: React.FC = () => {
     }
 
     try {
-      const mappedCode = getCategoryCode(values.projectType)
-      const matchedCategory = dbCategories.find(
-        (cat) => cat.code.toUpperCase() === mappedCode
-      )
+      const matchedCategory = findMatchingCategory(values.projectType, dbCategories)
 
       if (!matchedCategory) {
         alert('Invalid Project Type selected (could not map to database category).')
@@ -813,6 +939,7 @@ export const CreateLead: React.FC = () => {
         clientName: values.clientName,
         status: 'Draft',
         categoryValues: values.categoryValues || {},
+        attachments: uploadedFiles,
 
         // Legacy composite fields (kept for backward compat — populated from individual columns)
         projectName: values.leadTitle || '',
@@ -1127,6 +1254,18 @@ export const CreateLead: React.FC = () => {
               SECTION 3: Project Details
           ══════════════════════════════════════════════════════════════ */}
           <SectionCard title="Project Details" icon={<MdOutlineArchitecture size={16} />} delay={0.1}>
+            {(user?.role === 'Company' || user?.role === 'Super Admin') && (
+              <div className="flex justify-end mb-3">
+                <button
+                  type="button"
+                  onClick={() => setIsManageModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[#33a18a] text-xs font-bold transition-all cursor-pointer shadow-xs border border-slate-200 dark:border-slate-700"
+                >
+                  <FiPlusCircle className="w-3.5 h-3.5" />
+                  Manage Categories & Questions
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Project Type */}
               <FormField label="Project Type" required error={errors.projectType?.message}>
@@ -1136,7 +1275,12 @@ export const CreateLead: React.FC = () => {
                     className={selectCls}
                   >
                     <option value="">— Select Project Type —</option>
-                    {Object.keys(PROJECT_SUB_TYPES).map((type) => (
+                    {Array.from(
+                      new Set([
+                        ...Object.keys(PROJECT_SUB_TYPES),
+                        ...dbCategories.map((c) => c.name.split('—')[0].trim())
+                      ])
+                    ).map((type) => (
                       <option key={type} value={type}>{type}</option>
                     ))}
                   </select>
@@ -1806,8 +1950,8 @@ export const CreateLead: React.FC = () => {
                       type="button"
                       onClick={() => setValue('status', label, { shouldValidate: true })}
                       className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-xs font-bold transition-all duration-200 cursor-pointer ${isSelected
-                          ? 'shadow-md scale-[1.03] opacity-100'
-                          : 'opacity-65 hover:opacity-95'
+                        ? 'shadow-md scale-[1.03] opacity-100'
+                        : 'opacity-65 hover:opacity-95'
                         }`}
                       style={{
                         background: isSelected ? color : bg,
@@ -1865,12 +2009,13 @@ export const CreateLead: React.FC = () => {
           <SectionCard title="Attachments" icon={<FiPaperclip size={15} />} delay={0.45}>
             <div
               onDrop={onDrop}
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+              onDragOver={(e) => { e.preventDefault(); !isUploadingGeneral && setIsDragging(true) }}
               onDragLeave={() => setIsDragging(false)}
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 ${isDragging
-                ? 'border-[#33a18a] bg-[#33a18a]/10'
-                : 'border-slate-200 dark:border-slate-700 hover:border-[#33a18a]/40 hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+              onClick={() => !isUploadingGeneral && fileInputRef.current?.click()}
+              className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 ${isUploadingGeneral ? 'pointer-events-none opacity-60 border-slate-200 bg-slate-50/50 dark:bg-slate-800/20' :
+                isDragging
+                  ? 'border-[#33a18a] bg-[#33a18a]/10'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-[#33a18a]/40 hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
                 }`}
             >
               <input
@@ -1879,18 +2024,30 @@ export const CreateLead: React.FC = () => {
                 multiple
                 accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx"
                 className="hidden"
+                disabled={isUploadingGeneral}
                 onChange={(e) => processFiles(e.target.files)}
               />
               <div className="flex flex-col items-center gap-3 pointer-events-none">
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xs transition-all"
-                  style={{ background: isDragging ? '#33a18a20' : '#F3F4F6' }}
+                  style={{ background: isDragging || isUploadingGeneral ? '#33a18a20' : '#F3F4F6' }}
                 >
-                  <FiUploadCloud size={26} className={isDragging ? 'text-[#33a18a]' : 'text-slate-400'} />
+                  {isUploadingGeneral ? (
+                    <svg className="animate-spin h-6 w-6 text-[#33a18a]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <FiUploadCloud size={26} className={isDragging ? 'text-[#33a18a]' : 'text-slate-400'} />
+                  )}
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    {isDragging ? 'Release to upload' : 'Drag & drop files here or click to browse'}
+                    {isUploadingGeneral
+                      ? 'Uploading documents...'
+                      : isDragging
+                        ? 'Release to upload'
+                        : 'Drag & drop files here or click to browse'}
                   </p>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                     Supports: JPG, PNG, PDF, DOC, DOCX • Max 10MB per file
@@ -1990,6 +2147,7 @@ export const CreateLead: React.FC = () => {
           </div>
         </div>
       </form>
+
     </div>
   )
 }

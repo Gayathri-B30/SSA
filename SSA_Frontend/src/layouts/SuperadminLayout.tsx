@@ -7,7 +7,7 @@ interface SuperadminLayoutProps {
 
 export const SuperadminLayout: React.FC<SuperadminLayoutProps> = ({ children }) => {
   return (
-    <div className="flex h-screen w-screen bg-brand-bg overflow-hidden">
+    <div className="flex h-screen w-full bg-brand-bg overflow-hidden">
       {/* Superadmin Sidebar navigation */}
       <SuperadminSidebar activeMenu="dashboard" />
       

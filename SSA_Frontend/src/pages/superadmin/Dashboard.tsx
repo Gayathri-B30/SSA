@@ -475,7 +475,7 @@ export const SuperadminDashboard: React.FC = () => {
   }).length
 
   return (
-    <div className="min-h-screen w-screen bg-brand-bg text-brand-charcoal font-sans flex overflow-x-hidden">
+    <div className="flex h-screen w-full bg-brand-bg text-brand-charcoal font-sans overflow-hidden">
       
       {/* ── SIDEBAR ── */}
       <SuperadminSidebar 
@@ -488,21 +488,35 @@ export const SuperadminDashboard: React.FC = () => {
       />
 
       {/* ── MAIN CONTENT AREA ── */}
-      <div className={`flex-grow min-h-screen flex flex-col w-full transition-all duration-300 ${
-        isSidebarCollapsed ? 'ml-0 md:ml-20 md:w-[calc(100vw-80px)]' : 'ml-0 md:ml-64 md:w-[calc(100vw-256px)]'
+      <div className={`flex-1 flex flex-col h-screen overflow-y-auto min-w-0 transition-all duration-300 ${
+        isSidebarCollapsed ? 'ml-0 md:ml-20' : 'ml-0 md:ml-64'
       }`}>
         
         {/* Top Navbar */}
-        <header className={`h-16 bg-white border-b border-zinc-200/80 px-4 md:px-8 flex items-center justify-between fixed top-0 right-0 left-0 transition-all duration-300 z-20 shadow-sm shrink-0 ${
-          isSidebarCollapsed ? 'md:left-20' : 'md:left-64'
-        }`}>
-          <div>
+        <header className="h-16 bg-white border-b border-border-base px-4 md:px-8 flex items-center justify-between sticky top-0 transition-all duration-300 z-20 shadow-sm shrink-0">
+          <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 -ml-2 text-zinc-500 hover:text-zinc-800 rounded-lg transition-colors cursor-pointer md:hidden"
             >
               <Menu className="w-5 h-5" />
             </button>
+
+            {/* Breadcrumb in Nav Bar */}
+            <div className="hidden sm:flex items-center gap-2 text-xs font-extrabold text-zinc-400 select-none">
+              <button 
+                onClick={() => handleMenuChange('dashboard')} 
+                className="hover:text-brand-primary transition-colors cursor-pointer"
+              >
+                Home
+              </button>
+              <span>/</span>
+              {currentMenu === 'dashboard' ? (
+                <span className="text-brand-primary">Dashboard</span>
+              ) : (
+                <span className="text-brand-primary">Company</span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-5">
@@ -520,7 +534,7 @@ export const SuperadminDashboard: React.FC = () => {
             </div>
 
             {/* Theme Toggle Button Group */}
-            <div className="flex items-center gap-1 bg-zinc-100 border border-zinc-200/80 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-zinc-100 border border-border-base p-1 rounded-xl">
               {[
                 { mode: 'light', icon: '☀️', title: 'Light' },
                 { mode: 'dark', icon: '🌙', title: 'Dark' },
@@ -534,7 +548,7 @@ export const SuperadminDashboard: React.FC = () => {
                     title={title}
                     className={`w-6 h-6 rounded-lg text-[10px] flex items-center justify-center transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-white text-brand-primary shadow-sm border border-zinc-200/50'
+                        ? 'bg-white text-brand-primary shadow-sm border border-border-base'
                         : 'text-zinc-400 hover:text-zinc-600'
                     }`}
                   >
@@ -548,7 +562,7 @@ export const SuperadminDashboard: React.FC = () => {
 
             {/* Profile Dropdown */}
             <div className="flex items-center gap-3 cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 border border-zinc-200">
+              <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 border border-border-base">
                 <Users className="w-4 h-4" />
               </div>
               <span className="text-xs font-black text-zinc-800">Super Admin</span>
@@ -561,7 +575,7 @@ export const SuperadminDashboard: React.FC = () => {
               <div className="fixed inset-0 z-30" onClick={() => setShowNotifications(false)} />
               
               {/* Dropdown panel */}
-              <div className="fixed md:absolute top-16 right-4 left-4 md:left-auto md:right-8 mt-1 w-auto md:w-80 bg-white border border-zinc-200 shadow-2xl rounded-2xl z-40 overflow-hidden py-1 text-left animate-fade-in">
+              <div className="fixed md:absolute top-16 right-4 left-4 md:left-auto md:right-8 mt-1 w-auto md:w-80 bg-white border border-border-base shadow-2xl rounded-2xl z-40 overflow-hidden py-1 text-left animate-fade-in">
                 <div className="px-4 py-2.5 border-b border-zinc-100 flex items-center justify-between">
                   <span className="text-xs font-black text-zinc-800">Notifications</span>
                   <span className="text-[9px] font-black uppercase bg-red-50 text-brand-primary px-2 py-0.5 rounded-full">3 New</span>
@@ -608,34 +622,41 @@ export const SuperadminDashboard: React.FC = () => {
         </header>
 
         {/* Page Body */}
-        <main className="flex-grow p-8 pt-24 space-y-8 max-w-[1400px] w-full mx-auto">
+        <main className="flex-grow p-8 pt-8 space-y-8 max-w-[1400px] w-full mx-auto relative">
           
           {currentMenu === 'dashboard' ? (
             <>
-              {/* Dashboard Title & Breadcrumb */}
-              <div className="flex items-center justify-between shrink-0">
+              {/* Building sketch as page background - top right */}
+              <div className="absolute right-0 top-0 w-[60%] h-[300px] pointer-events-none hidden md:block z-0">
+                <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/70 to-transparent z-10" />
+                <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-brand-bg to-transparent z-10" />
+                <img
+                  src="/images/architecher.png"
+                  alt=""
+                  className="w-full h-full object-cover object-center opacity-70"
+                />
+              </div>
+
+              {/* Dashboard Title */}
+              <div className="flex items-center justify-between shrink-0 relative z-10">
                 <div className="text-left space-y-1">
                   <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Dashboard</h2>
                   <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Overview</p>
                 </div>
-                
-                <div className="text-xs font-bold text-zinc-400 flex items-center gap-2 select-none">
-                  <span>Home</span>
-                  <span>/</span>
-                  <span className="text-brand-primary">Dashboard</span>
-                </div>
               </div>
 
               {/* ── KPI SECTION ── */}
-              <StatsCards
-                totalCompaniesCount={totalCompaniesCount}
-                activeCompaniesCount={activeCompaniesCount}
-                totalUsersCount={totalUsersCount}
-                recentlyAddedCount={recentlyAddedCount}
-              />
+              <div className="relative z-10">
+                <StatsCards
+                  totalCompaniesCount={totalCompaniesCount}
+                  activeCompaniesCount={activeCompaniesCount}
+                  totalUsersCount={totalUsersCount}
+                  recentlyAddedCount={recentlyAddedCount}
+                />
+              </div>
 
               {/* ── COMPANIES OVERVIEW SECTION ── */}
-              <div className="space-y-4 shrink-0 text-left">
+              <div className="space-y-4 shrink-0 text-left relative z-10">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-black text-zinc-800">Companies Overview</h3>
                   <button 
@@ -653,15 +674,18 @@ export const SuperadminDashboard: React.FC = () => {
                     {companies.slice(0, 4).map((company) => (
                       <div 
                         key={company.id}
-                        className="bg-white rounded-2xl border border-zinc-200/80 overflow-hidden shadow-sm flex flex-col relative group hover:border-brand-primary/30 transition-all duration-300"
+                        className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm flex flex-col relative group hover:border-brand-primary/30 transition-all duration-300 hover:-translate-y-1"
                       >
+                        {/* Hover accent bar */}
+                        <div className="absolute top-0 left-0 right-0 h-0.5 bg-brand-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 z-20" />
+
                         {/* Grayscale Building Header Image */}
                         <div className="h-[140px] w-full relative overflow-hidden bg-zinc-200 shrink-0">
                           <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
 
                         {/* Floating building icon circle */}
-                        <div className="absolute top-[120px] left-4 z-10 w-9 h-9 rounded-xl bg-white border border-zinc-200/80 shadow-md flex items-center justify-center">
+                        <div className="absolute top-[120px] left-4 z-10 w-9 h-9 rounded-xl bg-white border border-border-base shadow-md flex items-center justify-center">
                           <Building2 className="w-4 h-4 text-brand-primary" />
                         </div>
 
@@ -669,7 +693,7 @@ export const SuperadminDashboard: React.FC = () => {
                         <div className="pt-6 p-4 flex flex-col justify-between flex-grow text-left">
                           <div className="space-y-1">
                             <div className="flex items-center justify-between gap-2">
-                              <h4 className="text-sm font-black text-zinc-800 truncate" title={company.name}>
+                              <h4 className="text-sm font-black text-zinc-800 truncate group-hover:text-brand-primary transition-colors duration-300" title={company.name}>
                                 {company.name}
                               </h4>
                               {/* Status pill badge */}
@@ -711,17 +735,11 @@ export const SuperadminDashboard: React.FC = () => {
             </>
           ) : (
             <>
-              {/* Company Management Title & Breadcrumb */}
+              {/* Company Management Title */}
               <div className="flex items-center justify-between shrink-0">
                 <div className="text-left space-y-1">
                   <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Company Management</h2>
                   <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Manage system tenants</p>
-                </div>
-                
-                <div className="text-xs font-bold text-zinc-400 flex items-center gap-2 select-none">
-                  <span>Home</span>
-                  <span>/</span>
-                  <span className="text-brand-primary">Company</span>
                 </div>
               </div>
 
@@ -741,7 +759,7 @@ export const SuperadminDashboard: React.FC = () => {
       {/* ── EDIT COMPANY MODAL ── */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full border border-zinc-200 shadow-2xl p-6 relative">
+          <div className="bg-white rounded-2xl max-w-2xl w-full border border-border-base shadow-2xl p-6 relative">
             <button
               onClick={() => {
                 setIsEditModalOpen(false)
@@ -979,20 +997,20 @@ export const SuperadminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-zinc-100 justify-end">
+              <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-4 border-t border-zinc-100 sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
                     setIsEditModalOpen(false)
                     setEditingCompanyId(null)
                   }}
-                  className="px-5 py-2.5 bg-brand-cancel hover:bg-brand-cancel-hover text-black text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-brand-cancel hover:bg-brand-cancel-hover text-black text-xs font-bold rounded-lg transition-colors cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-7 py-2.5 bg-brand-primary hover:bg-primary-600 text-white text-xs font-bold rounded-lg transition-colors shadow-md cursor-pointer"
+                  className="w-full sm:w-auto px-7 py-2.5 bg-brand-primary hover:bg-primary-600 text-white text-xs font-bold rounded-lg transition-colors shadow-md cursor-pointer text-center"
                 >
                   Save Changes
                 </button>
@@ -1011,7 +1029,7 @@ export const SuperadminDashboard: React.FC = () => {
             onClick={() => setCompanyToDeleteId(null)}
           />
           
-          <div className="bg-white rounded-2xl max-w-sm w-full border border-zinc-200 shadow-2xl p-6 relative z-10 text-center">
+          <div className="bg-white rounded-2xl max-w-sm w-full border border-border-base shadow-2xl p-6 relative z-10 text-center">
             <button
               onClick={() => setCompanyToDeleteId(null)}
               className="absolute right-4 top-4 p-1 text-zinc-400 hover:text-zinc-700 rounded-lg transition-colors cursor-pointer"

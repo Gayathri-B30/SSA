@@ -20,6 +20,7 @@ const RBAC = lazy(() => import('../pages/company/RBAC').then(m => ({ default: m.
 const Employees = lazy(() => import('../pages/company/Employees').then(m => ({ default: m.Employees })))
 const CRM = lazy(() => import('../pages/company/CRM').then(m => ({ default: m.CRM })))
 const CreateLead = lazy(() => import('../pages/company/leads/CreateLead').then(m => ({ default: m.CreateLead })))
+const CategoryQuestionManagerPage = lazy(() => import('../pages/company/leads/CategoryQuestionManagerPage').then(m => ({ default: m.CategoryQuestionManagerPage })))
 const Projects = lazy(() => import('../pages/company/Projects').then(m => ({ default: m.Projects })))
 const Tasks = lazy(() => import('../pages/company/Tasks').then(m => ({ default: m.Tasks })))
 const Resources = lazy(() => import('../pages/company/Resources').then(m => ({ default: m.Resources })))
@@ -220,6 +221,16 @@ export const AppRoutes: React.FC = () => {
             <ProtectedRoute allowedRoles={['Company', 'Branch', 'Super Admin']}>
               <CompanyLayout>
                 <CreateLead />
+              </CompanyLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/crm/leads/categories-questions"
+          element={
+            <ProtectedRoute allowedRoles={['Company', 'Branch', 'Super Admin']}>
+              <CompanyLayout>
+                <CategoryQuestionManagerPage />
               </CompanyLayout>
             </ProtectedRoute>
           }
