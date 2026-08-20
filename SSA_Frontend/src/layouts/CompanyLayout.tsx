@@ -125,9 +125,9 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       label: 'CRM',
       icon: Compass,
       subItems: [
+        { label: 'Clients', path: '/crm/clients' },
         { label: 'Leads', path: '/crm/leads' },
-        // { label: 'Opportunities', path: '/crm/opportunities' },
-        // { label: 'Clients', path: '/crm/clients' },
+        { label: 'Projects', path: '/crm/drawings' },
       ],
     },
     // {
@@ -189,6 +189,17 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       return item;
     });
 
+    const handleNavClick = (e: React.MouseEvent, path?: string) => {
+      if (!path) return
+      if (isMobile) {
+        setIsMobileOpen(false)
+      }
+      if (location.pathname === path) {
+        e.preventDefault()
+        navigate(path, { replace: true, state: { refreshKey: Date.now() } })
+      }
+    }
+
     return (
       <nav className="space-y-1 px-3 py-4 select-none">
         {filteredMenuItems.map((item) => {
@@ -235,6 +246,7 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                           <Link
                             key={sub.label}
                             to={sub.path}
+                            onClick={(e) => handleNavClick(e, sub.path)}
                             className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer ${isSubActive
                               ? 'text-white bg-brand-primary shadow-sm shadow-brand-primary/25 border-l-2 border-brand-gold'
                               : 'text-gray-400 hover:text-white hover:bg-slate-800/40'
@@ -250,6 +262,7 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               ) : (
                 <Link
                   to={item.path || '#'}
+                  onClick={(e) => handleNavClick(e, item.path)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${isItemActive
                     ? 'text-white bg-brand-primary shadow-md shadow-brand-primary/25'
                     : 'text-gray-400 hover:text-white hover:bg-slate-800/60'
@@ -523,7 +536,16 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
 
             {/* Breadcrumbs */}
             <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
-              <span className="hover:text-brand-primary font-medium transition-colors cursor-pointer" onClick={() => navigate('/dashboard')}>
+              <span
+                className="hover:text-brand-primary font-medium transition-colors cursor-pointer"
+                onClick={() => {
+                  if (location.pathname === '/dashboard') {
+                    navigate('/dashboard', { replace: true, state: { refreshKey: Date.now() } })
+                  } else {
+                    navigate('/dashboard')
+                  }
+                }}
+              >
                 Home
               </span>
               {getBreadcrumbs().map((b, index) => {
@@ -533,7 +555,13 @@ export const CompanyLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                   <React.Fragment key={index}>
                     <span className="text-slate-300">/</span>
                     <span
-                      onClick={() => navigate(destination)}
+                      onClick={() => {
+                        if (location.pathname === destination) {
+                          navigate(destination, { replace: true, state: { refreshKey: Date.now() } })
+                        } else {
+                          navigate(destination)
+                        }
+                      }}
                       className={`hover:text-brand-primary transition-colors cursor-pointer ${isLast ? 'text-brand-primary font-bold' : 'font-medium'
                         }`}
                     >

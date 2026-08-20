@@ -255,6 +255,16 @@ export const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/crm/drawings"
+          element={
+            <ProtectedRoute allowedRoles={['Company', 'Branch', 'Super Admin']}>
+              <CompanyLayout>
+                <CRM defaultTab="drawings" />
+              </CompanyLayout>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Projects Routes */}
         <Route

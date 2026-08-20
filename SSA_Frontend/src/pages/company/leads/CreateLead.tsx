@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useForm, Controller } from 'react-hook-form'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiDollarSign,
@@ -45,6 +46,7 @@ interface DBCategoryTemplateField {
 }
 
 interface LeadFormData {
+  clientId?: string | null
   leadTitle: string
   clientName: string
   company: string
@@ -246,8 +248,13 @@ const SelectChevron = () => (
 export const CreateLead: React.FC = () => {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const prefillClientId = searchParams.get('clientId')
   const isEditMode = !!id
   const { user } = useAuth()
+
+  const [clientsList, setClientsList] = useState<any[]>([])
+  const [selectedClientId, setSelectedClientId] = useState<string>('')
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -259,9 +266,10 @@ export const CreateLead: React.FC = () => {
   const [dbBranches, setDbBranches] = useState<any[]>([])
   const [dbEmployees, setDbEmployees] = useState<any[]>([])
   const [companyName, setCompanyName] = useState('Sundar Sundram Architects')
+  const [loadingExistingLead, setLoadingExistingLead] = useState(false)
 
-  // Auto-generate Lead ID
-  const [leadId] = useState(
+  // Auto-generate Lead ID (or use existing on edit)
+  const [leadId, setLeadId] = useState(
     () => `LD-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000)).padStart(4, '0')}`
   )
 
@@ -272,6 +280,7 @@ export const CreateLead: React.FC = () => {
     watch,
     setValue,
     getValues,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormData>({
     mode: 'onChange',
@@ -294,6 +303,285 @@ export const CreateLead: React.FC = () => {
     },
   })
 
+  // ── New Client Popup Modal State & Handlers ──
+  const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false)
+  const [newClientSubmitting, setNewClientSubmitting] = useState(false)
+  const [clientModalForm, setClientModalForm] = useState({
+    clientName: '',
+    company: '',
+    contactPerson: '',
+    clientType: 'Corporate',
+    mobile: '',
+    alternatePhone: '',
+    email: '',
+    address: '',
+    city: '',
+    state: '',
+    country: 'India',
+    pincode: '',
+    gstNo: '',
+    panNo: '',
+    aadharNo: '',
+    remarks: '',
+  })
+  const [clientModalErrors, setClientModalErrors] = useState<Record<string, string>>({})
+
+  const openNewClientModal = useCallback(() => {
+    setClientModalForm({
+      clientName: '',
+      company: '',
+      contactPerson: '',
+      clientType: 'Corporate',
+      mobile: '',
+      alternatePhone: '',
+      email: '',
+      address: '',
+      city: '',
+      state: '',
+      country: 'India',
+      pincode: '',
+      gstNo: '',
+      panNo: '',
+      aadharNo: '',
+      remarks: '',
+    })
+    setClientModalErrors({})
+    setIsNewClientModalOpen(true)
+  }, [])
+
+  const handleSaveNewClient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const errs: Record<string, string> = {}
+
+    // Client Name Validation
+    const nameTrim = clientModalForm.clientName.trim()
+    if (!nameTrim) {
+      errs.clientName = 'Client name is required'
+    } else if (nameTrim.length < 2) {
+      errs.clientName = 'Client name must be at least 2 characters'
+    } else if (!/^[a-zA-Z\s.'-]+$/.test(nameTrim)) {
+      errs.clientName = 'Client name should contain only letters, dots, and hyphens'
+    }
+
+    // Mobile Number Validation
+    const mobileClean = clientModalForm.mobile.replace(/[\s\-+]/g, '')
+    if (!clientModalForm.mobile.trim()) {
+      errs.mobile = 'Mobile number is required'
+    } else if (!/^[6-9]\d{9}$/.test(mobileClean)) {
+      errs.mobile = 'Enter a valid 10-digit mobile number (e.g. 9840012345)'
+    }
+
+    // Email Address Validation
+    const emailTrim = clientModalForm.email.trim()
+    if (!emailTrim) {
+      errs.email = 'Email address is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      errs.email = 'Enter a valid email address (e.g. client@example.com)'
+    }
+
+    // Address Validation
+    const addrTrim = clientModalForm.address.trim()
+    if (!addrTrim) {
+      errs.address = 'Office / Correspondence address is required'
+    } else if (addrTrim.length < 5) {
+      errs.address = 'Address must be at least 5 characters'
+    }
+
+    // City Validation
+    if (!clientModalForm.city.trim()) {
+      errs.city = 'City is required'
+    }
+
+    // State Validation
+    if (!clientModalForm.state.trim()) {
+      errs.state = 'State is required'
+    }
+
+    // Aadhar Number Validation (Optional)
+    const aadharClean = (clientModalForm.aadharNo || '').replace(/\s/g, '')
+    if (aadharClean.length > 0 && !/^[2-9]\d{11}$/.test(aadharClean)) {
+      errs.aadharNo = 'Aadhar number must be a valid 12-digit number (e.g. 1234 5678 9012)'
+    }
+
+    // PAN Number Validation (Optional)
+    const panClean = (clientModalForm.panNo || '').trim().toUpperCase()
+    if (panClean.length > 0 && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panClean)) {
+      errs.panNo = 'PAN format must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)'
+    }
+
+    // GST Number Validation (Optional)
+    const gstClean = (clientModalForm.gstNo || '').trim().toUpperCase()
+    if (gstClean.length > 0 && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstClean)) {
+      errs.gstNo = 'GST format must be 15-character GSTIN (e.g. 33ABCDE1234F1Z5)'
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setClientModalErrors(errs)
+      return
+    }
+
+    setNewClientSubmitting(true)
+    try {
+      const res = await api.post('/clients', clientModalForm)
+      if (res.data?.success && res.data?.data) {
+        const created = res.data.data
+        // Add to clientsList state
+        setClientsList(prev => [created, ...prev])
+        // Automatically select & link to current lead
+        setSelectedClientId(created.id)
+        setValue('clientId', created.id)
+        setValue('clientName', created.clientName || created.company || '', { shouldValidate: true })
+        if (created.company) setValue('company', created.company, { shouldValidate: true })
+        if (created.contactPerson) setValue('contactPerson', created.contactPerson, { shouldValidate: true })
+        if (created.mobile) setValue('mobile', created.mobile, { shouldValidate: true })
+        if (created.email) setValue('email', created.email, { shouldValidate: true })
+        if (created.address) setValue('siteAddress', created.address, { shouldValidate: true })
+        if (created.city) setValue('city', created.city, { shouldValidate: true })
+        if (created.state) setValue('state', created.state, { shouldValidate: true })
+        if (created.country) setValue('country', created.country || 'India', { shouldValidate: true })
+
+        setIsNewClientModalOpen(false)
+      } else {
+        alert(res.data?.message || 'Failed to create client')
+      }
+    } catch (err: any) {
+      console.error('Error creating client from modal:', err)
+      alert(err.response?.data?.message || err.message || 'Error saving client.')
+    } finally {
+      setNewClientSubmitting(false)
+    }
+  }
+
+  const handleSelectClient = useCallback((cId: string) => {
+    setSelectedClientId(cId)
+    if (!cId) {
+      setValue('clientId', null)
+      setValue('clientName', '', { shouldValidate: false })
+      setValue('company', '', { shouldValidate: false })
+      setValue('contactPerson', '', { shouldValidate: false })
+      setValue('mobile', '', { shouldValidate: false })
+      setValue('email', '', { shouldValidate: false })
+      setValue('siteAddress', '', { shouldValidate: false })
+      setValue('city', '', { shouldValidate: false })
+      setValue('state', '', { shouldValidate: false })
+      setValue('country', 'India', { shouldValidate: false })
+      return
+    }
+    const client = clientsList.find(c => c.id === cId || c.clientCode === cId)
+    if (client) {
+      setValue('clientId', client.id)
+      setValue('clientName', client.clientName || client.company || '', { shouldValidate: true })
+      if (client.company) setValue('company', client.company, { shouldValidate: true })
+      if (client.contactPerson) setValue('contactPerson', client.contactPerson, { shouldValidate: true })
+      if (client.mobile) setValue('mobile', client.mobile, { shouldValidate: true })
+      if (client.email) setValue('email', client.email, { shouldValidate: true })
+      if (client.address) setValue('siteAddress', client.address, { shouldValidate: true })
+      if (client.city) setValue('city', client.city, { shouldValidate: true })
+      if (client.state) setValue('state', client.state, { shouldValidate: true })
+      if (client.country) setValue('country', client.country || 'India', { shouldValidate: true })
+    }
+  }, [clientsList, setValue])
+
+  // ── Fetch existing lead data when in Edit Mode ──────────────────────────────
+  useEffect(() => {
+    if (!id) return
+
+    const fetchLeadForEdit = async () => {
+      setLoadingExistingLead(true)
+      try {
+        const res = await api.get(`/leads/${id}`)
+        if (res.data?.success && res.data?.data) {
+          const lead = res.data.data
+
+          if (lead.leadId) {
+            setLeadId(lead.leadId)
+          }
+
+          if (Array.isArray(lead.servicesRequired)) {
+            setSelectedServices(lead.servicesRequired)
+          }
+
+          if (Array.isArray(lead.attachments)) {
+            setUploadedFiles(lead.attachments)
+          }
+
+          let categoryFormVal = 'New Construction'
+          const buildTypeLower = (lead.buildType || lead.leadCategory || '').toLowerCase()
+          if (buildTypeLower.includes('renovation')) categoryFormVal = 'Renovation'
+          else if (buildTypeLower.includes('extension')) categoryFormVal = 'Extension'
+
+          reset({
+            leadTitle: lead.leadTitle || lead.projectName || '',
+            clientName: lead.clientName || lead.contactPerson || '',
+            company: lead.company || lead.organisation || '',
+            contactPerson: lead.contactPerson || '',
+            mobile: lead.mobile || '',
+            email: lead.email || '',
+            leadSource: lead.leadSource || 'Referral / Word of Mouth',
+            projectType: lead.projectType || (lead.category?.name) || '',
+            projectSubType: lead.projectSubType || lead.subType || '',
+            category: categoryFormVal,
+            siteAddress: lead.siteAddress || lead.locationAddress || '',
+            city: lead.city || '',
+            state: lead.state || '',
+            country: lead.country || 'India',
+            surveyNumber: lead.surveyNumber || '',
+            siteArea: lead.siteArea || '',
+            unit: lead.unit || 'Sq.ft',
+            estimatedBudget: lead.estimatedBudget || '',
+            expectedStartDate: lead.expectedStartDate || '',
+            expectedCompletionDate: lead.expectedCompletionDate || '',
+            assignedEmployee: lead.assignedEmployee || '',
+            branch: lead.branch || '',
+            branchId: lead.branchId || null,
+            status: lead.status || 'New Lead',
+            remarks: lead.remarks || '',
+            categoryValues: lead.categoryValues || {},
+
+            decisionMakers: lead.decisionMakers || '',
+            priorProjectsWithSSA: lead.priorProjectsWithSSA || 'No',
+            landOwnershipDocsAvailable: lead.landOwnershipDocsAvailable || 'Yes',
+            topographyLevels: lead.topographyLevels || '',
+            accessRoadWidth: lead.accessRoadWidth || '',
+            orientation: lead.orientation || '',
+            existingStructures: lead.existingStructures || 'None',
+            soilReportAvailable: lead.soilReportAvailable || 'No',
+            adjacentDevelopments: lead.adjacentDevelopments || '',
+            ebSupplySanctionedLoad: lead.ebSupplySanctionedLoad || '',
+            waterSource: lead.waterSource || 'Metro Water',
+            sewerSeptic: lead.sewerSeptic || 'Public Sewer line',
+            stormDrainage: lead.stormDrainage || 'Available / Connected',
+            telecom: lead.telecom || '',
+            approvingAuthority: lead.approvingAuthority || '',
+            landUseZoning: lead.landUseZoning || '',
+            fsiCoverageKnown: lead.fsiCoverageKnown || '',
+            setbacksHeightRestrictions: lead.setbacksHeightRestrictions || '',
+            priorApprovalsViolations: lead.priorApprovalsViolations || '',
+            specialRestrictions: lead.specialRestrictions || '',
+            expectedFloors: lead.expectedFloors || '',
+            fundingSource: lead.fundingSource || 'Self Funded',
+            phasingNeeds: lead.phasingNeeds || 'Single Phase',
+            contractorStatus: lead.contractorStatus || 'Not Appointed',
+            preferredVendors: lead.preferredVendors || '',
+            siteVisitFrequencyExpectation: lead.siteVisitFrequencyExpectation || '',
+            reportingExpectations: lead.reportingExpectations || '',
+            styleReferencesInspiration: lead.styleReferencesInspiration || '',
+            sustainabilityGoals: lead.sustainabilityGoals || '',
+            vaastuOrientationRequirements: lead.vaastuOrientationRequirements || '',
+            materialPreferences: lead.materialPreferences || '',
+          })
+        }
+      } catch (err) {
+        console.error('Failed to fetch lead for edit:', err)
+        alert('Failed to load lead details for modification.')
+      } finally {
+        setLoadingExistingLead(false)
+      }
+    }
+
+    fetchLeadForEdit()
+  }, [id, reset])
+
   const watchedProjectType = watch('projectType')
   const watchedStatus = watch('status')
   const watchedLeadSource = watch('leadSource')
@@ -304,6 +592,7 @@ export const CreateLead: React.FC = () => {
   const [templateFields, setTemplateFields] = useState<DBCategoryTemplateField[]>([])
   const [loadingFields, setLoadingFields] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [_isManageModalOpen, setIsManageModalOpen] = useState(false)
 
   const findMatchingCategory = (projectType: string, categories: DBProjectCategory[]): DBProjectCategory | undefined => {
     if (!projectType || categories.length === 0) return undefined
@@ -379,24 +668,46 @@ export const CreateLead: React.FC = () => {
     fetchCategories()
   }, [fetchCategories])
 
-  // Fetch branches, employees, and company details on mount/user change
+  // Fetch clients, branches, employees, and company details on mount/user change
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [branchesRes, employeesRes, companiesRes] = await Promise.all([
+        const [branchesRes, employeesRes, companiesRes, clientsRes] = await Promise.all([
           api.get('/branches'),
           api.get('/employees'),
-          api.get('/companies').catch(() => ({ data: [] }))
+          api.get('/companies').catch(() => ({ data: [] })),
+          api.get('/clients').catch(() => ({ data: { data: [] } }))
         ])
         const branches = branchesRes.data || []
         setDbBranches(branches)
         setDbEmployees(employeesRes.data || [])
 
-        // Set default branch
+        const clients = clientsRes.data?.data || (Array.isArray(clientsRes.data) ? clientsRes.data : [])
+        setClientsList(clients)
+
+        // Handle prefilled client from URL param ?clientId=...
+        if (prefillClientId && clients.length > 0) {
+          const matchedClient = clients.find((c: any) => c.id === prefillClientId || c.clientCode === prefillClientId)
+          if (matchedClient) {
+            setSelectedClientId(matchedClient.id)
+            setValue('clientId', matchedClient.id)
+            setValue('clientName', matchedClient.clientName || matchedClient.company || '')
+            if (matchedClient.company) setValue('company', matchedClient.company)
+            if (matchedClient.contactPerson) setValue('contactPerson', matchedClient.contactPerson)
+            if (matchedClient.mobile) setValue('mobile', matchedClient.mobile)
+            if (matchedClient.email) setValue('email', matchedClient.email)
+            if (matchedClient.address) setValue('siteAddress', matchedClient.address)
+            if (matchedClient.city) setValue('city', matchedClient.city)
+            if (matchedClient.state) setValue('state', matchedClient.state)
+            if (matchedClient.country) setValue('country', matchedClient.country || 'India')
+          }
+        }
+
+        // Set default branch only for creation
         if (user?.role === 'Branch' && user?.name) {
           setValue('branch', user.name)
           setValue('branchId', user.id)
-        } else {
+        } else if (!isEditMode) {
           setValue('branch', '')
           setValue('branchId', null)
         }
@@ -415,7 +726,7 @@ export const CreateLead: React.FC = () => {
       }
     }
     fetchData()
-  }, [user, setValue])
+  }, [user, setValue, isEditMode, prefillClientId])
 
   // Fetch template fields when projectType changes
   useEffect(() => {
@@ -826,6 +1137,7 @@ export const CreateLead: React.FC = () => {
 
         // ── Individual DB columns ──────────────────────────────────────
         // Lead / Client identification
+        clientId: data.clientId || selectedClientId || null,
         leadTitle: data.leadTitle || '',
         company: data.company || '',
         contactPerson: data.contactPerson || '',
@@ -956,6 +1268,7 @@ export const CreateLead: React.FC = () => {
 
         // ── Individual DB columns ──────────────────────────────────────
         // Lead / Client identification
+        clientId: values.clientId || selectedClientId || null,
         leadTitle: values.leadTitle || '',
         company: values.company || '',
         contactPerson: values.contactPerson || '',
@@ -1040,6 +1353,15 @@ export const CreateLead: React.FC = () => {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  if (loadingExistingLead) {
+    return (
+      <div className="py-24 flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-[#33a18a]/30 border-t-[#33a18a] rounded-full animate-spin"></div>
+        <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Loading lead details for modification...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 animate-fade-in text-slate-800 dark:text-slate-100 pb-8">
 
@@ -1081,6 +1403,70 @@ export const CreateLead: React.FC = () => {
           ══════════════════════════════════════════════════════════════ */}
           <SectionCard title="Lead Information" icon={<FiUser size={15} />} delay={0}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* ── Client Selection & Association ── */}
+              <div className="sm:col-span-2">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <label className="text-xs font-extrabold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <FiUsers className="text-[#33a18a]" size={15} /> Associated Client Profile <span className="text-[#33a18a]">*</span>
+                      </label>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Choose a registered client from the directory or register a new client via popup.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={openNewClientModal}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#33a18a] hover:bg-[#2a8774] text-white text-xs font-bold shadow-xs transition-all cursor-pointer self-start sm:self-auto"
+                    >
+                      <FiPlusCircle size={14} /> New Client
+                    </button>
+                  </div>
+
+                  <div className="relative flex items-center">
+                    <select
+                      value={selectedClientId}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '__NEW__') {
+                          openNewClientModal()
+                        } else {
+                          handleSelectClient(val)
+                        }
+                      }}
+                      className={`${selectCls} font-semibold ${selectedClientId ? 'pr-20' : ''}`}
+                    >
+                      <option value="">-- Select Registered Client Profile --</option>
+                      <option value="__NEW__" className="font-bold text-[#33a18a]">
+                        + Register New Client
+                      </option>
+                      {clientsList.length > 0 && (
+                        <optgroup label="── Registered Clients ──">
+                          {clientsList.map((c: any) => (
+                            <option key={c.id} value={c.id}>
+                              {c.clientCode ? `[${c.clientCode}] ` : ''}{c.clientName || c.company} {c.company && c.company !== c.clientName ? `(${c.company})` : ''} {c.city ? `• ${c.city}` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+
+                    {selectedClientId && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectClient('')}
+                        className="absolute right-9 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-400 hover:text-red-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+                        title="Clear selected client"
+                      >
+                        <FiX size={12} /> Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Lead ID */}
               <FormField label="Lead ID" hint="Auto-generated, read-only">
                 <input
@@ -1257,7 +1643,7 @@ export const CreateLead: React.FC = () => {
               <div className="flex justify-end mb-3">
                 <button
                   type="button"
-                  onClick={() => navigate('/crm/leads/categories-questions')}
+                  onClick={() => setIsManageModalOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[#33a18a] text-xs font-bold transition-all cursor-pointer shadow-xs border border-slate-200 dark:border-slate-700"
                 >
                   <FiPlusCircle className="w-3.5 h-3.5" />
@@ -2146,6 +2532,260 @@ export const CreateLead: React.FC = () => {
           </div>
         </div>
       </form>
+
+      {/* ═════════════════════════════════════════════════════════════════════════
+          REGISTER NEW CLIENT POPUP MODAL (Portal)
+      ═════════════════════════════════════════════════════════════════════════ */}
+      {isNewClientModalOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#33a18a]/10 border border-[#33a18a]/20 flex items-center justify-center text-[#33a18a]">
+                  <FiUsers size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Register New Client Profile
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Capture client particulars to automatically link with this lead requirement.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNewClientModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <FiX size={18} />
+              </button>
+            </div>
+
+            {/* Modal Form Body */}
+            <form onSubmit={handleSaveNewClient} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+
+                {/* Client Name */}
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Client Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={clientModalForm.clientName}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, clientName: e.target.value })}
+                    placeholder="e.g. Gokul Ramakrishnan"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
+                  />
+                  {clientModalErrors.clientName && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.clientName}</p>}
+                </div>
+
+                {/* Company Name */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Company / Organization Name
+                  </label>
+                  <input
+                    type="text"
+                    value={clientModalForm.company}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, company: e.target.value })}
+                    placeholder="e.g. GR Prestige Projects"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
+                  />
+                </div>
+
+                {/* Contact Person */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Contact Person
+                  </label>
+                  <input
+                    type="text"
+                    value={clientModalForm.contactPerson}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, contactPerson: e.target.value })}
+                    placeholder="Primary contact name"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
+                  />
+                </div>
+
+                {/* Client Type */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Client Type
+                  </label>
+                  <select
+                    value={clientModalForm.clientType}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, clientType: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
+                  >
+                    <option value="Corporate">Corporate Developer</option>
+                    <option value="Individual Developer">Individual Developer</option>
+                    <option value="Institutional">Institutional Body</option>
+                    <option value="Commercial">Commercial Owner</option>
+                    <option value="Government">Government / Public</option>
+                  </select>
+                </div>
+
+                {/* Mobile */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={clientModalForm.mobile}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, mobile: e.target.value })}
+                    placeholder="+91 98400 00000"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
+                  />
+                  {clientModalErrors.mobile && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.mobile}</p>}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Email Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={clientModalForm.email}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, email: e.target.value })}
+                    placeholder="client@organization.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
+                  />
+                  {clientModalErrors.email && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.email}</p>}
+                </div>
+
+                {/* Address */}
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Office / Correspondence Address <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={clientModalForm.address}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, address: e.target.value })}
+                    placeholder="Street address, building, locality..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] resize-none"
+                  />
+                  {clientModalErrors.address && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.address}</p>}
+                </div>
+
+                {/* City & State */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    City <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={clientModalForm.city}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, city: e.target.value })}
+                    placeholder="e.g. Chennai"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
+                  />
+                  {clientModalErrors.city && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.city}</p>}
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    State <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={clientModalForm.state}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, state: e.target.value })}
+                    placeholder="e.g. Tamil Nadu"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
+                  />
+                  {clientModalErrors.state && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.state}</p>}
+                </div>
+
+                {/* GST, PAN & Aadhar */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">GST Number</label>
+                  <input
+                    type="text"
+                    value={clientModalForm.gstNo}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, gstNo: e.target.value })}
+                    placeholder="e.g. 33AABCG1234F1Z5"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] uppercase font-mono"
+                  />
+                  {clientModalErrors.gstNo && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.gstNo}</p>}
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">PAN Number</label>
+                  <input
+                    type="text"
+                    value={clientModalForm.panNo}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, panNo: e.target.value })}
+                    placeholder="e.g. AABCG1234F"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] uppercase font-mono"
+                  />
+                  {clientModalErrors.panNo && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.panNo}</p>}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Aadhar Number</label>
+                  <input
+                    type="text"
+                    value={clientModalForm.aadharNo}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, aadharNo: e.target.value })}
+                    placeholder="e.g. 1234 5678 9012"
+                    maxLength={16}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] font-mono"
+                  />
+                  {clientModalErrors.aadharNo && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.aadharNo}</p>}
+                </div>
+
+                {/* Remarks */}
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                    Notes / Remarks
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={clientModalForm.remarks}
+                    onChange={(e) => setClientModalForm({ ...clientModalForm, remarks: e.target.value })}
+                    placeholder="Key client preferences or relationship notes..."
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsNewClientModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={newClientSubmitting}
+                  className="px-5 py-2.5 rounded-xl bg-[#33a18a] hover:bg-[#2a8774] text-xs font-extrabold text-white shadow-md transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                >
+                  {newClientSubmitting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Saving & Linking...
+                    </>
+                  ) : (
+                    <>
+                      <FiCheckCircle size={14} />
+                      Save & Link Client
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
   )

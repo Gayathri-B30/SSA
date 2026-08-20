@@ -283,14 +283,24 @@ export const initialLeaves: LeaveRequest[] = [
 export interface Lead {
   id: string
   dbId?: number
+  clientId?: string | null
   leadName: string
   company: string
   contactPerson: string
   mobile: string
   email: string
-  source: 'Website' | 'Reference' | 'Cold Call' | 'Social Media' | 'Partner'
+  source: 'Website' | 'Reference' | 'Cold Call' | 'Social Media' | 'Partner' | string
   assignedTo: string
-  status: 'New' | 'Contacted' | 'Meeting' | 'Proposal' | 'Negotiation' | 'Qualified' | 'Lost'
+  assignedEmployee?: string
+  status: 'New' | 'Contacted' | 'Meeting' | 'Proposal' | 'Negotiation' | 'Qualified' | 'Lost' | string
+  projectType?: string
+  estimatedBudget?: string
+  siteAddress?: string
+  city?: string
+  state?: string
+  country?: string
+  branch?: string
+  rawLead?: any
 }
 
 export const initialLeads: Lead[] = [
@@ -320,13 +330,35 @@ export const initialOpportunities: Opportunity[] = [
 
 export interface Client {
   id: string
+  clientCode?: string
+  companyId?: string
+  branchId?: string | null
   clientName: string
-  company: string
-  mobile: string
-  email: string
-  contractValue: number
-  contractStatus: 'Active' | 'Completed' | 'Pending Renewal' | 'Terminated'
-  projectsCount: number
+  company?: string
+  contactPerson?: string
+  mobile?: string
+  alternatePhone?: string
+  email?: string
+  address?: string
+  siteAddress?: string
+  city?: string
+  state?: string
+  country?: string
+  pincode?: string
+  gstNo?: string
+  panNo?: string
+  aadharNo?: string
+  clientType?: string
+  status?: string
+  remarks?: string
+  contractValue?: number
+  contractStatus?: 'Active' | 'Completed' | 'Pending Renewal' | 'Terminated' | string
+  projectsCount?: number
+  leadsCount?: number
+  leads?: any[]
+  projects?: any[]
+  createdAt?: string | Date
+  updatedAt?: string | Date
 }
 
 export const initialClients: Client[] = [
@@ -528,7 +560,9 @@ export const initialMaterials: MaterialStock[] = [
   { id: 'MAT-804', materialName: 'Matte Finish Texture Sample Boards', category: 'Design Materials', stockLevel: 0, unit: 'Kits', reorderPoint: 5, status: 'Out of Stock' },
 ]
 
-// 12. Document Control (Drawings Register)
+// 12. Document Control (Drawings Register & Master Drawing List)
+import type { DisciplineCode } from './masterDrawingListData'
+
 export interface Drawing {
   id: string
   drawingNumber: string
@@ -539,13 +573,23 @@ export interface Drawing {
   approvedBy: string
   status: 'Approved' | 'For Review' | 'Revision Required' | 'Draft'
   projectCode: string
+  discipline?: DisciplineCode
+  level?: string
+  purpose?: string
+  cascadingReviewFlag?: boolean
 }
 
 export const initialDrawings: Drawing[] = [
-  { id: 'DWG-901', drawingNumber: 'SSA-CH-GR01-ARC-PL-001', drawingTitle: 'Ground Floor Furniture & Partition Layout', revisionNumber: 'R2', revisionDate: '2026-06-10', preparedBy: 'Siddharth Sen', approvedBy: 'Ananya Deshmukh', status: 'Approved', projectCode: 'SSA-CH-GR01' },
-  { id: 'DWG-902', drawingNumber: 'SSA-CH-GR01-STR-FD-005', drawingTitle: 'Foundation Tie Beam Rebar Details', revisionNumber: 'R1', revisionDate: '2026-06-12', preparedBy: 'Priya Ranganathan', approvedBy: 'Sundar Sundram', status: 'Approved', projectCode: 'SSA-CH-GR01' },
-  { id: 'DWG-903', drawingNumber: 'SSA-BLR-FH02-MEP-HVAC-010', drawingTitle: 'Third Floor AHU Duct Routing Layout', revisionNumber: 'R0', revisionDate: '2026-06-17', preparedBy: 'Rahul Sharma', approvedBy: 'Rajeev Mehta', status: 'For Review', projectCode: 'SSA-BLR-FH02' },
-  { id: 'DWG-904', drawingNumber: 'SSA-MUM-ZS03-ARC-EL-002', drawingTitle: 'Facade North and East Elevation Details', revisionNumber: 'R0', revisionDate: '2026-06-18', preparedBy: 'Aditi Rao', approvedBy: 'Vikram Malhotra', status: 'Revision Required', projectCode: 'SSA-MUM-ZS03' },
+  { id: 'DWG-901', drawingNumber: 'GVR-2026-001-AR-GF-PLN-001', drawingTitle: 'Ground Floor Architectural Base Plan', revisionNumber: 'R00', revisionDate: '2026-06-10', preparedBy: 'Siddharth Sen', approvedBy: 'Ananya Deshmukh', status: 'Approved', projectCode: 'GVR-2026-001', discipline: 'AR', level: 'GF', purpose: 'Master plan of each floor — all rooms, walls, doors, dimensions. Every other discipline draws on top of this.' },
+  { id: 'DWG-902', drawingNumber: 'GVR-2026-001-AR-01-PLN-002', drawingTitle: 'First Floor Architectural Base Plan', revisionNumber: 'R00', revisionDate: '2026-06-12', preparedBy: 'Siddharth Sen', approvedBy: 'Ananya Deshmukh', status: 'Approved', projectCode: 'GVR-2026-001', discipline: 'AR', level: '01', purpose: 'Master plan of first floor — all rooms, walls, doors, dimensions.' },
+  { id: 'DWG-903', drawingNumber: 'GVR-2026-001-ST-GF-PLN-001', drawingTitle: 'Ground Floor Column Layout', revisionNumber: 'R00', revisionDate: '2026-06-14', preparedBy: 'Priya Ranganathan', approvedBy: 'Sundar Sundram', status: 'Approved', projectCode: 'GVR-2026-001', discipline: 'ST', level: 'GF', purpose: 'Where every column stands on Ground Floor.', cascadingReviewFlag: true },
+  { id: 'DWG-904', drawingNumber: 'GVR-2026-001-EL-GF-PWR-001', drawingTitle: 'Ground Floor Electrical Power Layout', revisionNumber: 'R00', revisionDate: '2026-06-15', preparedBy: 'Rahul Sharma', approvedBy: 'Rajeev Mehta', status: 'Approved', projectCode: 'GVR-2026-001', discipline: 'EL', level: 'GF', purpose: 'Socket and equipment power points on Ground Floor.', cascadingReviewFlag: true },
+  { id: 'DWG-905', drawingNumber: 'GVR-2026-001-EL-01-PWR-002', drawingTitle: 'First Floor Electrical Power Layout', revisionNumber: 'R00', revisionDate: '2026-06-17', preparedBy: 'Rahul Sharma', approvedBy: 'Rajeev Mehta', status: 'For Review', projectCode: 'GVR-2026-001', discipline: 'EL', level: '01', purpose: 'Socket and equipment power points on First Floor.' },
+  { id: 'DWG-906', drawingNumber: 'GVR-2026-001-HV-GF-DUCT-001', drawingTitle: 'Ground Floor HVAC Duct Layout Plan', revisionNumber: 'R00', revisionDate: '2026-06-18', preparedBy: 'Aditi Rao', approvedBy: 'Vikram Malhotra', status: 'Revision Required', projectCode: 'GVR-2026-001', discipline: 'HV', level: 'GF', purpose: 'Air supply and return ductwork on Ground Floor.', cascadingReviewFlag: true },
+  { id: 'DWG-907', drawingNumber: 'GVR-2026-001-MG-01-PLN-001', drawingTitle: 'First Floor Medical Gas Pipeline Routing', revisionNumber: 'R00', revisionDate: '2026-06-19', preparedBy: 'Kavita Menon', approvedBy: 'Ananya Deshmukh', status: 'Draft', projectCode: 'GVR-2026-001', discipline: 'MG', level: '01', purpose: 'Medical-gas pipe routing to each ward and OT on First Floor.' },
+  { id: 'DWG-908', drawingNumber: 'GVR-2026-001-LV-GF-PLN-001', drawingTitle: 'Ground Floor CCTV & ELV Layout', revisionNumber: 'R00', revisionDate: '2026-06-20', preparedBy: 'Vijay Kumar', approvedBy: 'Sundar Sundram', status: 'Draft', projectCode: 'GVR-2026-001', discipline: 'LV', level: 'GF', purpose: 'Camera positions and coverage on Ground Floor.' },
+  { id: 'DWG-909', drawingNumber: 'GVR-2026-001-VT-ALL-PLN-001', drawingTitle: 'Vertical Transport Lift Arrangement', revisionNumber: 'R00', revisionDate: '2026-06-21', preparedBy: 'Arun Prakash', approvedBy: 'Sundar Sundram', status: 'Approved', projectCode: 'GVR-2026-001', discipline: 'VT', level: 'ALL', purpose: 'Position and type of each lift (4 bed-lifts + patient + visitor lift).' },
+  { id: 'DWG-910', drawingNumber: 'GVR-2026-001-SP-GF-PLN-001', drawingTitle: 'Ground Floor Commercial Kitchen Layout', revisionNumber: 'R00', revisionDate: '2026-06-22', preparedBy: 'Siddharth Sen', approvedBy: 'Rajeev Mehta', status: 'For Review', projectCode: 'GVR-2026-001', discipline: 'SP', level: 'GF', purpose: 'Commercial kitchen equipment arrangement on Ground Floor.' },
 ]
 
 // 13. Document Templates

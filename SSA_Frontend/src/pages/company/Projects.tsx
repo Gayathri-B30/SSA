@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
-import { initialProjects, type Project } from '../../data/mockData'
-import { Plus, Calendar, DollarSign, MapPin, Scale } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Plus, Calendar, DollarSign, MapPin, Scale, Layers } from 'lucide-react'
+import api from '../../services/api'
+import { ProjectDrawingWorkspace } from './projects/ProjectDrawingWorkspace'
+import type { Project } from '../../data/mockData'
+import { initialProjects } from '../../data/mockData'
 
 interface ProjectsProps {
   defaultTab?: 'projects' | 'milestones'
@@ -24,13 +27,97 @@ interface ProjectFormInputs {
 
 export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [activeTab, setActiveTab] = useState<'projects' | 'milestones'>(defaultTab)
 
   useEffect(() => {
     setActiveTab(defaultTab)
-  }, [defaultTab])
-  const [projects, setProjects] = useState<Project[]>(initialProjects)
+    setSelectedWorkspaceProjectId(null)
+    fetchProjects()
+  }, [defaultTab, location.pathname, location.key, (location.state as any)?.refreshKey])
+
+  const [projects, setProjects] = useState<Project[]>([])
+  const [selectedWorkspaceProjectId, setSelectedWorkspaceProjectId] = useState<string | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
+
+  const fetchProjects = async () => {
+    const stored = JSON.parse(localStorage.getItem('ssa_projects') || '[]')
+    let dbProjects: Project[] = []
+    let dbLeads: any[] = []
+
+    try {
+      const res = await api.get('/projects')
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        dbProjects = res.data.data.map((p: any) => ({
+          id: p.id || p.projectCode,
+          projectCode: p.projectCode || p.id,
+          projectName: p.projectName || p.name || p.title,
+          client: p.clientName || p.client || p.company || p.organisation || p.contactPerson || p.projectName || 'Unassigned',
+          location: p.location || 'Main Site / Campus',
+          projectType: p.projectType || 'Commercial',
+          siteArea: p.siteArea || '12,500 sqft',
+          builtUpArea: p.builtUpArea || '45,000 sqft',
+          budget: p.budget || 18000000,
+          timeline: p.timeline || '2026 - 2027',
+          status: p.status || 'Schematic',
+          progress: p.progress || 45
+        }))
+      }
+    } catch (err) {
+      console.warn('Error fetching projects from API:', err)
+    }
+
+    try {
+      const resLeads = await api.get('/leads')
+      if (resLeads.data?.success && Array.isArray(resLeads.data.data)) {
+        dbLeads = resLeads.data.data
+      }
+    } catch (err) {
+      console.warn('Error fetching leads from API:', err)
+    }
+
+    const mergedMap = new Map()
+
+    // 1. Add DB Projects
+    dbProjects.forEach(p => {
+      if (p && (p.id || p.projectCode)) mergedMap.set(p.id || p.projectCode, p)
+    })
+
+    // 2. Add DB Leads from Lead Generation
+    dbLeads.forEach(l => {
+      const pCode = l.projectCode || l.leadId || (l.id ? `LD-${l.id}` : null)
+      const pName = l.projectName || l.leadTitle || l.leadName || (l.company ? `${l.company} Project` : null)
+      if (pCode && pName) {
+        const key = l.id ? `LEAD-${l.id}` : pCode
+        if (!mergedMap.has(key) && !mergedMap.has(pCode)) {
+          mergedMap.set(key, {
+            id: key,
+            projectCode: pCode,
+            projectName: pName,
+            client: l.clientName || l.company || l.organisation || l.contactPerson || l.leadTitle || pName || 'Unassigned',
+            location: [l.city, l.state].filter(Boolean).join(', ') || 'Main Site / Campus',
+            projectType: l.projectType || l.leadCategory || 'Commercial',
+            siteArea: l.siteArea ? `${l.siteArea} ${l.unit || 'sqft'}` : '12,500 sqft',
+            builtUpArea: l.expectedBuiltUpArea || '45,000 sqft',
+            budget: Number(l.estimatedBudget) || 18000000,
+            timeline: l.expectedStartDate ? `${l.expectedStartDate} to ${l.expectedCompletionDate || 'TBD'}` : '2026 - 2027',
+            status: l.status === 'Qualified' ? 'Design Development' : 'Pre Design',
+            progress: l.status === 'Qualified' ? 30 : 15
+          })
+        }
+      }
+    })
+
+    // 3. Add LocalStorage projects
+    stored.forEach((p: any) => {
+      if (p && (p.id || p.projectCode)) {
+        const key = p.id || p.projectCode
+        if (!mergedMap.has(key)) mergedMap.set(key, p)
+      }
+    })
+
+    setProjects(Array.from(mergedMap.values()))
+  }
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ProjectFormInputs>()
 
@@ -42,7 +129,10 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
       budget: Number(data.budget),
       progress: Number(data.progress),
     }
-    setProjects([...projects, newP])
+    const updated = [...projects, newP]
+    setProjects(updated)
+    const stored = JSON.parse(localStorage.getItem('ssa_projects') || '[]')
+    localStorage.setItem('ssa_projects', JSON.stringify([...stored, newP]))
     setIsAddOpen(false)
     reset()
   }
@@ -66,6 +156,10 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
       case 'As Built': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
       default: return 'bg-slate-800 text-brand-gray'
     }
+  }
+
+  if (selectedWorkspaceProjectId) {
+    return <ProjectDrawingWorkspace projectId={selectedWorkspaceProjectId} onBack={() => setSelectedWorkspaceProjectId(null)} />
   }
 
   return (
@@ -168,8 +262,14 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
                   </div>
                 </div>
 
-                {/* Delete trigger */}
-                <div className="flex justify-end pt-2">
+                {/* Actions */}
+                <div className="flex justify-between items-center pt-2">
+                  <button
+                    onClick={() => setSelectedWorkspaceProjectId(prj.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-extrabold transition-all cursor-pointer"
+                  >
+                    <Layers className="w-3.5 h-3.5" /> View Drawing Workspace & MDL
+                  </button>
                   <button
                     onClick={() => deleteProject(prj.id)}
                     className="text-[10px] text-red-400 hover:text-red-300 font-semibold"

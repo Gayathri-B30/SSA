@@ -41,7 +41,7 @@ export const Inventory: React.FC<InventoryProps> = ({ defaultTab = 'assets' }) =
   }, [defaultTab])
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [materials, setMaterials] = useState<MaterialStock[]>(initialMaterials)
-  
+
   const [isAssetOpen, setIsAssetOpen] = useState(false)
   const [isMaterialOpen, setIsMaterialOpen] = useState(false)
 
@@ -64,8 +64,8 @@ export const Inventory: React.FC<InventoryProps> = ({ defaultTab = 'assets' }) =
     const status = Number(data.stockLevel) === 0
       ? 'Out of Stock'
       : Number(data.stockLevel) < Number(data.reorderPoint)
-      ? 'Low Stock'
-      : 'In Stock'
+        ? 'Low Stock'
+        : 'In Stock'
 
     const newM: MaterialStock = {
       id: `MAT-${Math.floor(800 + Math.random() * 200)}`,
@@ -121,31 +121,28 @@ export const Inventory: React.FC<InventoryProps> = ({ defaultTab = 'assets' }) =
       <div className="flex border-b border-slate-200">
         <button
           onClick={() => navigate('/inventory/assets')}
-          className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-            activeTab === 'assets'
+          className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${activeTab === 'assets'
               ? 'border-brand-primary text-brand-primary'
               : 'border-transparent text-brand-gray hover:text-brand-charcoal'
-          }`}
+            }`}
         >
           Assets Registry
         </button>
         <button
           onClick={() => navigate('/inventory/materials')}
-          className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-            activeTab === 'materials'
+          className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${activeTab === 'materials'
               ? 'border-brand-primary text-brand-primary'
               : 'border-transparent text-brand-gray hover:text-brand-charcoal'
-          }`}
+            }`}
         >
           Consumable Materials
         </button>
         <button
           onClick={() => navigate('/inventory/stock')}
-          className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-            activeTab === 'stock'
+          className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${activeTab === 'stock'
               ? 'border-brand-primary text-brand-primary'
               : 'border-transparent text-brand-gray hover:text-brand-charcoal'
-          }`}
+            }`}
         >
           Stock Warnings
         </button>
@@ -184,13 +181,12 @@ export const Inventory: React.FC<InventoryProps> = ({ defaultTab = 'assets' }) =
                     <td className="p-4 text-brand-gray">{a.warrantyDate}</td>
                     <td className="p-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          a.status === 'Assigned'
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${a.status === 'Assigned'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : a.status === 'In Stock'
-                            ? 'bg-brand-primary/10 text-brand-gold border border-brand-primary/20'
-                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                        }`}
+                              ? 'bg-brand-primary/10 text-brand-gold border border-brand-primary/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          }`}
                       >
                         {a.status}
                       </span>
@@ -243,13 +239,12 @@ export const Inventory: React.FC<InventoryProps> = ({ defaultTab = 'assets' }) =
                       </td>
                       <td className="p-4">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            m.status === 'In Stock'
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${m.status === 'In Stock'
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                               : m.status === 'Low Stock'
-                              ? 'bg-amber-500/10 text-amber-405 border border-amber-500/20 animate-pulse'
-                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                          }`}
+                                ? 'bg-amber-500/10 text-amber-405 border border-amber-500/20 animate-pulse'
+                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}
                         >
                           {m.status === 'In Stock' ? (
                             <Check className="w-3 h-3" />
@@ -388,7 +383,7 @@ export const Inventory: React.FC<InventoryProps> = ({ defaultTab = 'assets' }) =
 
               {/* Assigned To */}
               <div>
-                <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Assigned Owner</label>
+                <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Assigned Staff</label>
                 <input
                   type="text"
                   {...registerAsset('assignedTo', { required: true })}

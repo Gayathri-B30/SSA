@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -11,7 +11,7 @@ const api = axios.create({
 // Request Interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('ssa_auth_token') || localStorage.getItem('token')
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -29,7 +29,10 @@ api.interceptors.response.use(
     // Handle global errors here
     if (error.response?.status === 401) {
       // e.g. token expired, redirect to login or clear auth
+      localStorage.removeItem('ssa_auth_token')
+      localStorage.removeItem('ssa_auth_user')
       localStorage.removeItem('token')
+      localStorage.removeItem('user')
     }
     return Promise.reject(error)
   }
