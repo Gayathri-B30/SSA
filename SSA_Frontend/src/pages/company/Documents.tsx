@@ -16,14 +16,10 @@ import {
 import {
   Plus,
   Sparkles,
-  Search,
   Zap,
-  AlertTriangle,
   Download,
-  Filter,
   CheckCircle2,
   Building2,
-  Layers,
   FileCheck,
   Check,
   Lock,
@@ -66,11 +62,11 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isSubmittingDrawing, setIsSubmittingDrawing] = useState(false)
-  const [search, setSearch] = useState('')
+  const [search] = useState('')
 
   // ── Master Drawing List (MDL) Filters ──────────────────────────────────────
-  const [selectedDiscipline, setSelectedDiscipline] = useState<'ALL' | DisciplineCode>('ALL')
-  const [selectedLevel, setSelectedLevel] = useState<'ALL' | string>('ALL')
+  const [selectedDiscipline] = useState<'ALL' | DisciplineCode>('ALL')
+  const [selectedLevel] = useState<'ALL' | string>('ALL')
 
   // ── Auto-Generation Modal State ──────────────────────────────────────────
   const [isAutoGenModalOpen, setIsAutoGenModalOpen] = useState(false)
@@ -301,20 +297,6 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
     setIsAutoGenModalOpen(false)
   }
 
-  // Quick Status Update for Drawings
-  const updateDrawingStatus = (id: string, newStatus: Drawing['status']) => {
-    setDrawings((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: newStatus, cascadingReviewFlag: false } : d))
-    )
-  }
-
-  // Delete drawing
-  const deleteDrawing = (id: string) => {
-    if (confirm('Delete this drawing record?')) {
-      setDrawings(drawings.filter(d => d.id !== id))
-    }
-  }
-
   // Export Transmittal Schedule to CSV
   const exportTransmittalCSV = () => {
     const headers = ['Drawing Number', 'Title', 'Discipline', 'Level', 'Revision', 'Revision Date', 'Status', 'Prepared By', 'Approved By', 'Purpose']
@@ -354,23 +336,6 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
 
     return matchesSearch && matchesDiscipline && matchesLevel
   })
-
-  // Cascading Revision Alert check (if AR has approved/revised sheets)
-  const hasCascadingFlags = drawings.some((d) => d.cascadingReviewFlag)
-
-  const getStatusColor = (status: Drawing['status']) => {
-    switch (status) {
-      case 'Approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
-      case 'For Review': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20'
-      case 'Revision Required': return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'
-      case 'Draft': return 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-    }
-  }
-
-  // Count drawings by discipline
-  const getDisciplineCount = (code: DisciplineCode) => {
-    return drawings.filter((d) => d.discipline === code).length
-  }
 
   // Calculate Area Summary from Annexure A
   const areaSummary = calculateHospitalAreaStatement(selectedAnnexureModules)

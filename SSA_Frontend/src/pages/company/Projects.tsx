@@ -5,7 +5,6 @@ import { Plus, Calendar, DollarSign, MapPin, Scale, Layers } from 'lucide-react'
 import api from '../../services/api'
 import { ProjectDrawingWorkspace } from './projects/ProjectDrawingWorkspace'
 import type { Project } from '../../data/mockData'
-import { initialProjects } from '../../data/mockData'
 
 interface ProjectsProps {
   defaultTab?: 'projects' | 'milestones'

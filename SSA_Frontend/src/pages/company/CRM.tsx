@@ -9,10 +9,10 @@ import {
 } from '../../data/mockData'
 import {
   Plus, UserCheck, Phone, Mail, Calendar, Trash2, Eye, User,
-  MapPin, Layers, FileText, Activity, Briefcase, Edit2,
-  CheckCircle2, XCircle, DollarSign, Undo2, Zap, Folder,
+  MapPin, Layers, FileText, Briefcase, Edit2,
+  CheckCircle2, XCircle, Zap, Folder,
   Search, ArrowLeft, Download, Users, Building, ShieldCheck, Tag,
-  Upload, ExternalLink, X
+  Upload, X
 } from 'lucide-react'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
@@ -130,7 +130,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
   const [convertAssignedEmployee, setConvertAssignedEmployee] = useState<string>('')
   const [convertLoading, setConvertLoading] = useState(false)
   const [contractValue, setContractValue] = useState<string>('')
-  const [createProjectOnConvert, setCreateProjectOnConvert] = useState<boolean>(true)
+  const [createProjectOnConvert] = useState<boolean>(true)
   const [convertProjectPrefix, setConvertProjectPrefix] = useState<string>('GVR')
   const [selectedDisciplines, setSelectedDisciplines] = useState<string[]>([])
   const [selectedFloors, setSelectedFloors] = useState<string[]>(['GF', '01', '02', '03', '04', 'TR'])
@@ -165,9 +165,6 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
   const [customDisciplineDesc, setCustomDisciplineDesc] = useState('')
   const [addingDiscipline, setAddingDiscipline] = useState(false)
 
-  const [revertingClient, setRevertingClient] = useState<any | null>(null)
-  const [revertTargetStatus, setRevertTargetStatus] = useState<string>('Qualified')
-  const [revertLoading, setRevertLoading] = useState(false)
   const [selectedLeadDetails, setSelectedLeadDetails] = useState<any | null>(null)
   const [selectedDrawingProject, setSelectedDrawingProject] = useState<any | null>(null)
   const [drawingsSearch, setDrawingsSearch] = useState<string>('')
@@ -371,7 +368,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
     }
   }
 
-  const { register: registerClient, handleSubmit: handleSubmitClient, reset: resetClient, setValue: setClientValue, formState: { errors: clientErrors } } = useForm<ClientFormInputs>({ mode: 'onChange' })
+  const { register: registerClient, handleSubmit: handleSubmitClient, reset: resetClient, formState: { errors: clientErrors } } = useForm<ClientFormInputs>({ mode: 'onChange' })
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message })
@@ -879,26 +876,6 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
       showToast('error', 'Failed to create discipline folder.')
     } finally {
       setAddingDiscipline(false)
-    }
-  }
-
-  const handleRevertToLeadConfirm = async () => {
-    if (!revertingClient) return
-    setRevertLoading(true)
-    try {
-      if (revertingClient.dbId) {
-        await api.put(`/leads/${revertingClient.dbId}`, {
-          status: revertTargetStatus || 'Qualified'
-        }, { timeout: 25000 })
-      }
-      setRevertingClient(null)
-      fetchData()
-      showToast('success', 'Moved back to active leads pipeline!')
-    } catch (err: any) {
-      console.error('Revert error:', err)
-      showToast('error', 'Failed to move back to lead.')
-    } finally {
-      setRevertLoading(false)
     }
   }
 

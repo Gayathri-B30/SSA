@@ -7,7 +7,6 @@ import {
   Upload,
   Plus,
   Search,
-  Filter,
   CheckCircle2,
   AlertTriangle,
   Clock,
@@ -15,15 +14,9 @@ import {
   Download,
   Folder,
   Building2,
-  User,
-  ShieldCheck,
   Settings,
   X,
-  FileCode,
-  Sparkles,
-  ArrowRight,
-  RefreshCw,
-  Tag
+  FileCode
 } from 'lucide-react';
 import api from '../../../services/api';
 import { DISCIPLINE_CATALOG, deriveProjectCodeFromName, type DisciplineCode } from '../../../data/masterDrawingListData';
@@ -204,7 +197,6 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
 
   // Master Drawing Types Admin State
   const [drawingTypes, setDrawingTypes] = useState<any[]>([]);
-  const [editingType, setEditingType] = useState<any | null>(null);
 
   // Fetch initial Projects list
   useEffect(() => {
