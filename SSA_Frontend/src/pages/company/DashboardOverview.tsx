@@ -138,63 +138,63 @@ export const DashboardOverview: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in text-brand-charcoal relative text-left">
-      {/* Building sketch as page background - top right */}
-      <div className="absolute right-0 top-0 w-[60%] h-[300px] pointer-events-none hidden md:block z-0">
+      {/* Building sketch as page background - top right (only on large desktop so it doesn't overlap text on tablets/mobiles) */}
+      <div className="absolute right-0 top-0 w-[45%] max-w-[500px] h-[280px] pointer-events-none hidden xl:block z-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-brand-bg via-brand-bg/70 to-transparent z-10" />
         <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-brand-bg to-transparent z-10" />
         <img
           src="/images/architecher.png"
           alt=""
-          className="w-full h-full object-cover object-center opacity-70"
+          className="w-full h-full object-cover object-center opacity-40"
         />
       </div>
 
       {/* Welcome Banner */}
       <div className="relative z-10">
-        <div className="p-6 sm:p-8 flex flex-col gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-brand-charcoal tracking-tight">
+        <div className="p-4 sm:p-6 lg:p-8 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div className="min-w-0 max-w-2xl">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-charcoal tracking-tight">
               Welcome back, <span className="text-brand-primary">{user?.name || 'Sundar Sundram'}</span>
             </h1>
-            <p className="text-xs sm:text-sm text-brand-gray mt-1 font-medium">
+            <p className="text-xs sm:text-sm text-brand-gray mt-1 font-medium leading-relaxed">
               {user?.role === 'Branch'
                 ? "Here is what's happening in your branch division today."
                 : "Here's what's happening with your projects today."}
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {user?.role !== 'Branch' && (
               <>
                 <button
-                  onClick={() => navigate('')}
-                  className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-brand-primary/20 flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => navigate('/projects')}
+                  className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-brand-primary hover:bg-brand-primary/90 active:scale-95 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-brand-primary/20 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
-                  <Icons.Layers className="w-3.5 h-3.5" />
-                  View Projects
+                  <Icons.Layers className="w-3.5 h-3.5 shrink-0" />
+                  <span>View Projects</span>
                 </button>
                 <button
                   onClick={() => navigate('/crm/leads')}
-                  className="px-4 py-2 bg-white hover:bg-slate-50 text-brand-charcoal text-xs font-bold rounded-xl border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-slate-50 active:scale-95 text-brand-charcoal text-xs font-bold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shadow-sm hover:border-slate-300"
                 >
-                  <Icons.Compass className="w-3.5 h-3.5" />
-                  View Leads
+                  <Icons.Compass className="w-3.5 h-3.5 shrink-0" />
+                  <span>View Leads</span>
                 </button>
               </>
             )}
             <button
               onClick={() => navigate('/employees/list', { state: { openAddModal: true } })}
-              className="px-4 py-2 bg-white hover:bg-slate-50 text-brand-charcoal text-xs font-bold rounded-xl border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-slate-50 active:scale-95 text-brand-charcoal text-xs font-bold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shadow-sm hover:border-slate-300"
             >
-              <Icons.UserPlus className="w-3.5 h-3.5 text-brand-primary" />
-              Add Employee
+              <Icons.UserPlus className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+              <span>Add Employee</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* 4 Key KPI Cards */}
-      <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {displayStats.map((card: any) => {
           const isUp = card.trend === 'up'
           const isDown = card.trend === 'down'
@@ -202,22 +202,22 @@ export const DashboardOverview: React.FC = () => {
           return (
             <div
               key={card.id}
-              className="glass-card p-5 rounded-2xl border border-slate-200/80 hover:border-brand-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden bg-white"
+              className="glass-card p-4 sm:p-5 rounded-2xl border border-slate-200/80 hover:border-brand-primary/30 transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden bg-white shadow-sm"
             >
               {/* Hover accent bar */}
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-brand-primary transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
 
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold text-brand-gray uppercase tracking-wider truncate">
+                <span className="text-[10px] sm:text-xs font-bold text-brand-gray uppercase tracking-wider truncate">
                   {card.label}
                 </span>
-                <div className="p-2 rounded-lg bg-primary-50 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-colors">
-                  <StatIcon name={card.icon} className="w-5 h-5" />
+                <div className="p-2 rounded-lg bg-primary-50 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-colors shrink-0">
+                  <StatIcon name={card.icon} className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
 
               <div className="mt-3 flex items-baseline justify-between gap-1 flex-wrap">
-                <span className="text-2xl font-extrabold text-brand-charcoal tracking-tight group-hover:text-brand-primary transition-colors">
+                <span className="text-xl sm:text-2xl font-extrabold text-brand-charcoal tracking-tight group-hover:text-brand-primary transition-colors">
                   {card.value}
                 </span>
                 <span
@@ -231,7 +231,7 @@ export const DashboardOverview: React.FC = () => {
                   {card.change.split(' ')[0]}
                 </span>
               </div>
-              <p className="text-[10px] text-brand-gray mt-1.5 truncate">
+              <p className="text-[10px] sm:text-[11px] text-brand-gray mt-1.5 truncate">
                 {card.change}
               </p>
             </div>
@@ -241,19 +241,19 @@ export const DashboardOverview: React.FC = () => {
 
       {/* Dynamic Branch Charts or Company Charts */}
       {user?.role === 'Branch' ? (
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Chart 1: Operational Performance Trend */}
-          <div className="glass-card p-5 rounded-2xl border border-slate-200/80 bg-white">
-            <div className="flex items-center justify-between mb-4">
+          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
               <div>
-                <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider">
+                <h3 className="text-xs sm:text-sm font-bold text-brand-charcoal uppercase tracking-wider">
                   Operational Performance Trend
                 </h3>
-                <p className="text-[10px] text-brand-gray mt-0.5">Monthly Attendance vs Task SLA compliance rates</p>
+                <p className="text-[10px] sm:text-xs text-brand-gray mt-0.5">Monthly Attendance vs Task SLA compliance rates</p>
               </div>
-              <span className="text-[10px] text-brand-primary font-bold">Percentage (%)</span>
+              <span className="text-[10px] sm:text-xs text-brand-primary font-bold">Percentage (%)</span>
             </div>
-            <div className="h-72 w-full text-xs">
+            <div className="h-64 sm:h-72 w-full text-xs">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={operationsTrendData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                   <defs>
@@ -281,14 +281,14 @@ export const DashboardOverview: React.FC = () => {
           </div>
 
           {/* Chart 2: Team Competency Radar Index */}
-          <div className="glass-card p-5 rounded-2xl border border-slate-200/80 bg-white">
+          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
             <div className="mb-4">
-              <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider">
+              <h3 className="text-xs sm:text-sm font-bold text-brand-charcoal uppercase tracking-wider">
                 Competency Radar Index
               </h3>
-              <p className="text-[10px] text-brand-gray mt-0.5">Average skill index compared against company baseline</p>
+              <p className="text-[10px] sm:text-xs text-brand-gray mt-0.5">Average skill index compared against company baseline</p>
             </div>
-            <div className="h-72 w-full text-xs">
+            <div className="h-64 sm:h-72 w-full text-xs">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={branchCompetencyData}>
                   <PolarGrid stroke="var(--color-border-base)" />
@@ -304,16 +304,16 @@ export const DashboardOverview: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Chart 1: Revenue Analytics */}
-          <div className="glass-card p-5 rounded-2xl border border-slate-200/80 bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider">
+          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
+              <h3 className="text-xs sm:text-sm font-bold text-brand-charcoal uppercase tracking-wider">
                 Revenue Analytics (Billing vs Collections)
               </h3>
-              <span className="text-[10px] text-brand-primary font-bold">INR (₹) Lakhs</span>
+              <span className="text-[10px] sm:text-xs text-brand-primary font-bold">INR (₹) Lakhs</span>
             </div>
-            <div className="h-72 w-full text-xs">
+            <div className="h-64 sm:h-72 w-full text-xs">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueAnalyticsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
@@ -345,11 +345,11 @@ export const DashboardOverview: React.FC = () => {
           </div>
 
           {/* Chart 2: Projects by Phase */}
-          <div className="glass-card p-5 rounded-2xl border border-slate-200/80 bg-white">
-            <h3 className="text-xs font-bold text-brand-charcoal uppercase tracking-wider mb-4">
+          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <h3 className="text-xs sm:text-sm font-bold text-brand-charcoal uppercase tracking-wider mb-4">
               Projects Active by Phase
             </h3>
-            <div className="h-72 w-full text-xs">
+            <div className="h-64 sm:h-72 w-full text-xs">
               <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                 <BarChart data={projectProgressData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }} className="outline-none focus:outline-none">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-base)" />

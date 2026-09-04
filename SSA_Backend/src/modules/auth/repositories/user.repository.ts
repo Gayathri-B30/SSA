@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 export class UserRepository {
   private async getRepository(): Promise<Repository<UserModel>> {
     const dataSource = await getDataSource();
-    return dataSource.getRepository('UserModel');
+    return dataSource.getRepository(UserModel);
   }
 
   async findById(id: number): Promise<UserModel | null> {

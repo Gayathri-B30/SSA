@@ -5,7 +5,9 @@ import {
   Layers,
   FileText,
   Upload,
+  FileCheck,
   Plus,
+  FolderPlus,
   Search,
   CheckCircle2,
   AlertTriangle,
@@ -16,7 +18,8 @@ import {
   Building2,
   Settings,
   X,
-  FileCode
+  FileCode,
+  Sparkles,
 } from 'lucide-react';
 import api from '../../../services/api';
 import { DISCIPLINE_CATALOG, deriveProjectCodeFromName, type DisciplineCode } from '../../../data/masterDrawingListData';
@@ -197,6 +200,24 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
 
   // Master Drawing Types Admin State
   const [drawingTypes, setDrawingTypes] = useState<any[]>([]);
+
+  // New Drawing Modal State
+  const [isAddDrawingModalOpen, setIsAddDrawingModalOpen] = useState<boolean>(false);
+  const [newDrawingForm, setNewDrawingForm] = useState({
+    title: '',
+    drawingCode: '',
+    discipline: 'AR',
+    level: 'GF',
+    drawingType: 'PLN',
+    revisionNumber: 'R00',
+    preparedBy: 'Siddharth Sen',
+    approvedBy: 'Ananya Deshmukh',
+    status: 'Draft',
+    purpose: '',
+  });
+  const [newDrawingFile, setNewDrawingFile] = useState<File | null>(null);
+  const [isSubmittingNewDrawing, setIsSubmittingNewDrawing] = useState<boolean>(false);
+  const [folderSuccessMsg, setFolderSuccessMsg] = useState<string | null>(null);
 
   // Fetch initial Projects list
   useEffect(() => {
@@ -574,6 +595,170 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
     }
   };
 
+  const handleOpenAddDrawingModal = () => {
+    const rawId = selectedProjectId || projectData?.id || projectData?.projectCode || 'GVR';
+    const pCode = deriveProjectCodeFromName(projectData?.projectName || projectData?.clientName || 'Project', rawId);
+    const existingDisciplines = projectData?.disciplines || [];
+    const initialDisc = selectedDiscipline !== 'ALL'
+      ? selectedDiscipline
+      : (existingDisciplines.length > 0 ? existingDisciplines[0].code : 'AR');
+
+    const matchingCount = drawings.filter(d => (d.disciplineCode === initialDisc || d.discipline === initialDisc)).length;
+    const seq = String(matchingCount + 1).padStart(3, '0');
+    const autoCode = `${pCode}-${initialDisc}-GF-PLN-${seq}`;
+    const discTitle = DISCIPLINE_CATALOG[initialDisc as DisciplineCode]?.name || initialDisc;
+
+    setNewDrawingForm({
+      title: `Ground Floor ${discTitle} Base Layout Plan`,
+      drawingCode: autoCode,
+      discipline: initialDisc,
+      level: 'GF',
+      drawingType: 'PLN',
+      revisionNumber: 'R00',
+      preparedBy: 'Siddharth Sen',
+      approvedBy: 'Ananya Deshmukh',
+      status: 'Draft',
+      purpose: 'Standard engineering drawing deliverable for site execution and client coordination.',
+    });
+    setNewDrawingFile(null);
+    setFolderSuccessMsg(null);
+    setIsAddDrawingModalOpen(true);
+  };
+
+  const handleNewDrawingFieldChange = (field: string, value: string) => {
+    setNewDrawingForm(prev => {
+      const updated = { ...prev, [field]: value };
+      const rawId = selectedProjectId || projectData?.id || projectData?.projectCode || 'GVR';
+      const pCode = deriveProjectCodeFromName(projectData?.projectName || projectData?.clientName || 'Project', rawId);
+      const disc = updated.discipline;
+      const lvl = updated.level;
+      const type = updated.drawingType;
+
+      if (field === 'discipline' || field === 'level' || field === 'drawingType') {
+        const matchingCount = drawings.filter(d => (d.disciplineCode === disc || d.discipline === disc)).length;
+        const seq = String(matchingCount + 1).padStart(3, '0');
+        updated.drawingCode = `${pCode}-${disc}-${lvl}-${type}-${seq}`;
+
+        const discTitle = DISCIPLINE_CATALOG[disc as DisciplineCode]?.name || disc;
+        const levelTitle = lvl === 'GF' ? 'Ground Floor' : lvl === 'B1' ? 'Basement' : lvl === 'TR' ? 'Terrace' : lvl === 'ALL' ? 'Overall Campus' : lvl === 'SITE' ? 'Site Plan' : `Floor ${lvl}`;
+        const typeTitles: Record<string, string> = {
+          PLN: 'Base Layout Plan',
+          PWR: 'Electrical Power Layout',
+          LTG: 'Lighting & Switching Plan',
+          SLD: 'Single Line Diagram (SLD)',
+          WTR: 'Water Supply Piping Plan',
+          DRN: 'Drainage & Sewage Routing Plan',
+          DUCT: 'HVAC Air Ducting Layout',
+          SEC: 'Building Cross Section',
+          ELE: 'Exterior Facade Elevation',
+          DET: 'Connection Detail Sheet',
+          SCH: 'Equipment & Panel Schedule',
+          RCP: 'Reflected Ceiling Plan (RCP)'
+        };
+        const typeText = typeTitles[type] || 'Deliverable Plan';
+        updated.title = `${levelTitle} ${discTitle} ${typeText}`;
+      }
+      return updated;
+    });
+  };
+
+
+
+  const handleSubmitNewDrawing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDrawingForm.drawingCode || !newDrawingForm.title) {
+      alert('Please fill in drawing code and title.');
+      return;
+    }
+
+    setIsSubmittingNewDrawing(true);
+    try {
+      const activePId = selectedProjectId || projectData?.id || DEFAULT_PROJECT.id;
+      const rawId = activePId || projectData?.id || projectData?.projectCode || 'GVR';
+      const pCode = deriveProjectCodeFromName(projectData?.projectName || projectData?.clientName || 'Project', rawId);
+
+      let fileUrl = 'blob:placeholder';
+      let originalFileName = '';
+      let fileSize = 0;
+      let fileType = '';
+
+      if (newDrawingFile) {
+        fileUrl = URL.createObjectURL(newDrawingFile);
+        originalFileName = newDrawingFile.name;
+        fileSize = newDrawingFile.size;
+        fileType = newDrawingFile.type;
+
+        try {
+          const folderPath = `project_drawings/${pCode}/${newDrawingForm.discipline}`;
+          const formData = new FormData();
+          formData.append('file', newDrawingFile);
+          formData.append('folder', folderPath);
+          const uploadRes = await api.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          if (uploadRes.data?.url || uploadRes.data?.secure_url) {
+            fileUrl = uploadRes.data.url || uploadRes.data.secure_url;
+          }
+        } catch (uploadErr) {
+          console.warn('Cloudinary upload warning:', uploadErr);
+        }
+      }
+
+      const newRecord: any = {
+        id: `DWG-${Math.floor(1000 + Math.random() * 9000)}`,
+        drawingCode: newDrawingForm.drawingCode,
+        drawingNumber: newDrawingForm.drawingCode,
+        drawingTitle: newDrawingForm.title,
+        discipline: newDrawingForm.discipline,
+        disciplineCode: newDrawingForm.discipline,
+        level: newDrawingForm.level,
+        drawingType: newDrawingForm.drawingType,
+        currentRevision: newDrawingForm.revisionNumber || 'R00',
+        revisionNumber: newDrawingForm.revisionNumber || 'R00',
+        revisionDate: new Date().toISOString().split('T')[0],
+        preparedBy: newDrawingForm.preparedBy,
+        approvedBy: newDrawingForm.approvedBy,
+        status: newDrawingForm.status,
+        purpose: newDrawingForm.purpose,
+        projectCode: pCode,
+        projectId: activePId,
+        fileUrl,
+        url: fileUrl,
+        originalFileName,
+        fileSize,
+        fileType,
+        createdAt: new Date().toISOString(),
+      };
+
+      try {
+        await api.post(`/projects/${activePId}/drawings`, newRecord);
+      } catch (apiErr) {
+        console.warn('API save drawing fallback:', apiErr);
+      }
+
+      // Save locally
+      const targetKeys = [
+        `ssa_drawings_${activePId}`,
+        `ssa_drawings_${pCode}`,
+        'registered_drawings'
+      ];
+      for (const key of targetKeys) {
+        const stored = JSON.parse(localStorage.getItem(key) || '[]');
+        localStorage.setItem(key, JSON.stringify([newRecord, ...stored]));
+      }
+
+      window.dispatchEvent(new Event('ssa_drawing_registered'));
+      await fetchProjectDrawings(activePId);
+      setIsAddDrawingModalOpen(false);
+      alert(`Drawing Deliverable "${newRecord.drawingCode}" registered successfully!`);
+    } catch (err: any) {
+      console.error('Failed to create drawing:', err);
+      alert(err.message || 'Failed to create drawing.');
+    } finally {
+      setIsSubmittingNewDrawing(false);
+    }
+  };
+
   // Filter logic - strict project scoping
   const projectDrawings = drawings.filter(d => {
     const validCodes = new Set(
@@ -674,10 +859,18 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
           </div>
 
           <button
-            onClick={() => setIsAddDisciplineModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-extrabold text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+            onClick={handleOpenAddDrawingModal}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary/90 text-xs font-extrabold text-white shadow-md shadow-brand-primary/20 transition-all cursor-pointer active:scale-95"
           >
             <Plus className="w-4 h-4" />
+            Add Drawing
+          </button>
+
+          <button
+            onClick={() => setIsAddDisciplineModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-extrabold text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer active:scale-95"
+          >
+            <FolderPlus className="w-4 h-4" />
             Create Discipline Folder
           </button>
 
@@ -875,6 +1068,24 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
               <option value="Coordination Required">Coordination Required</option>
             </select>
           </div>
+
+          <button
+            onClick={() => setIsAddDisciplineModalOpen(true)}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
+            title="Create Discipline Folder"
+          >
+            <FolderPlus className="w-3.5 h-3.5" />
+            <span>Add Folder</span>
+          </button>
+
+          <button
+            onClick={handleOpenAddDrawingModal}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-brand-primary hover:bg-brand-primary/90 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
+            title="Register Drawing Deliverable"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Drawing</span>
+          </button>
         </div>
       </div>
 
@@ -886,10 +1097,24 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
             <p className="text-xs font-bold text-brand-gray uppercase tracking-wider">Loading Master Drawing Register...</p>
           </div>
         ) : filteredDrawings.length === 0 ? (
-          <div className="p-12 text-center">
+          <div className="p-12 text-center space-y-2">
             <FileText className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
             <p className="text-sm font-bold text-brand-charcoal dark:text-white">No Drawings Found</p>
-            <p className="text-xs text-brand-gray mt-1">Try adjusting your discipline or level filters.</p>
+            <p className="text-xs text-brand-gray">Try adjusting your discipline or level filters, or add a new drawing / folder.</p>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                onClick={() => setIsAddDisciplineModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer active:scale-95"
+              >
+                <FolderPlus className="w-3.5 h-3.5" /> Add Folder
+              </button>
+              <button
+                onClick={handleOpenAddDrawingModal}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary hover:bg-brand-primary/90 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Drawing
+              </button>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -1378,6 +1603,269 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
         </div>,
         document.body
       )}
+      {/* ADD DRAWING DELIVERABLE MODAL */}
+      {isAddDrawingModalOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] text-brand-charcoal dark:text-white">
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary font-bold">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-brand-charcoal dark:text-white">
+                    Register Drawing Deliverable
+                  </h2>
+                  <p className="text-[11px] text-brand-gray font-mono">
+                    Project: {projectData?.projectCode || displayProjectCode}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddDrawingModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSubmitNewDrawing} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-6 space-y-4 text-xs overflow-y-auto flex-1 max-h-[calc(92vh-130px)]">
+                {folderSuccessMsg && (
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 animate-fade-in">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>{folderSuccessMsg}</span>
+                  </div>
+                )}
+
+                {/* Discipline Folder Field */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Discipline Package <span className="text-brand-primary">*</span>
+                  </label>
+                  <select
+                    value={newDrawingForm.discipline}
+                    onChange={(e) => handleNewDrawingFieldChange('discipline', e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white cursor-pointer font-bold"
+                  >
+                    {projectData?.disciplines && projectData.disciplines.length > 0 ? (
+                      projectData.disciplines.map((d: any) => (
+                        <option key={d.code} value={d.code}>
+                          {d.code} — {DISCIPLINE_CATALOG[d.code as DisciplineCode]?.name || d.code}
+                        </option>
+                      ))
+                    ) : (
+                      Object.entries(DISCIPLINE_CATALOG).map(([code, meta]) => (
+                        <option key={code} value={code}>
+                          {code} — {meta.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Floor Level */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Floor Level <span className="text-brand-primary">*</span>
+                    </label>
+                    <select
+                      value={newDrawingForm.level}
+                      onChange={(e) => handleNewDrawingFieldChange('level', e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white cursor-pointer font-bold"
+                    >
+                      <option value="GF">Ground Floor (GF)</option>
+                      <option value="B1">Basement (B1)</option>
+                      <option value="01">First Floor (01)</option>
+                      <option value="02">Second Floor (02)</option>
+                      <option value="03">Third Floor (03)</option>
+                      <option value="04">Fourth Floor (04)</option>
+                      <option value="TR">Terrace (TR)</option>
+                      <option value="ALL">Whole Building (ALL)</option>
+                      <option value="SITE">Site / Plot (SITE)</option>
+                    </select>
+                  </div>
+
+                  {/* Drawing Deliverable Type */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Drawing Type / Sheet Category <span className="text-brand-primary">*</span>
+                    </label>
+                    <select
+                      value={newDrawingForm.drawingType}
+                      onChange={(e) => handleNewDrawingFieldChange('drawingType', e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white cursor-pointer font-bold"
+                    >
+                      <option value="PLN">PLN — Base Layout Plan</option>
+                      <option value="PWR">PWR — Electrical Power Layout</option>
+                      <option value="LTG">LTG — Lighting & Switching</option>
+                      <option value="SLD">SLD — Single Line Diagram</option>
+                      <option value="WTR">WTR — Water Supply Piping</option>
+                      <option value="DRN">DRN — Drainage & Sewerage</option>
+                      <option value="DUCT">DUCT — HVAC Ducting Plan</option>
+                      <option value="SEC">SEC — Building Cross Section</option>
+                      <option value="ELE">ELE — Facade Elevation</option>
+                      <option value="DET">DET — Detail & Connection Sheet</option>
+                      <option value="SCH">SCH — Equipment & Panel Schedule</option>
+                      <option value="RCP">RCP — Reflected Ceiling Plan</option>
+                    </select>
+                  </div>
+
+                  {/* Drawing Number */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Drawing Number / Code <span className="text-brand-primary">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newDrawingForm.drawingCode}
+                      onChange={(e) => setNewDrawingForm({ ...newDrawingForm, drawingCode: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white font-mono font-extrabold"
+                      placeholder="e.g. GVR-AR-GF-PLN-001"
+                    />
+                  </div>
+
+                  {/* Revision Index */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Revision Index
+                    </label>
+                    <input
+                      type="text"
+                      value={newDrawingForm.revisionNumber}
+                      onChange={(e) => setNewDrawingForm({ ...newDrawingForm, revisionNumber: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white font-mono font-bold"
+                    />
+                  </div>
+
+                  {/* Drawing Deliverable Title */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Drawing Deliverable Title <span className="text-brand-primary">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newDrawingForm.title}
+                      onChange={(e) => setNewDrawingForm({ ...newDrawingForm, title: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white font-bold"
+                      placeholder="e.g. Ground Floor Architectural Base Layout Plan"
+                    />
+                  </div>
+
+                  {/* Prepared By */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Prepared By
+                    </label>
+                    <input
+                      type="text"
+                      value={newDrawingForm.preparedBy}
+                      onChange={(e) => setNewDrawingForm({ ...newDrawingForm, preparedBy: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white font-medium"
+                    />
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Initial Status
+                    </label>
+                    <select
+                      value={newDrawingForm.status}
+                      onChange={(e) => setNewDrawingForm({ ...newDrawingForm, status: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white font-bold cursor-pointer"
+                    >
+                      <option value="Draft">Draft</option>
+                      <option value="Under Review">Under Review</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Issued for Construction">Issued for Construction</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* File Upload Field */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Upload Drawing File (PDF / DWG / DXF / Image)
+                  </label>
+                  <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center hover:border-brand-primary transition-colors bg-slate-50/50 dark:bg-slate-800/40 cursor-pointer relative">
+                    <input
+                      type="file"
+                      accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.zip"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setNewDrawingFile(file);
+                        }
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                    <div className="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+                      <Upload className="w-6 h-6 text-brand-primary" />
+                      {newDrawingFile ? (
+                        <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                          <FileCheck className="w-4 h-4" />
+                          <span>{newDrawingFile.name} ({(newDrawingFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                            Click or drag & drop drawing sheet file to attach
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-mono">
+                            Supports PDF, DWG, DXF, PNG, JPG, ZIP (Max 50MB)
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Purpose */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Purpose (Plain Words for Site)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={newDrawingForm.purpose}
+                    onChange={(e) => setNewDrawingForm({ ...newDrawingForm, purpose: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-white"
+                    placeholder="Explain in plain words why this drawing exists and who uses it on site..."
+                  />
+                </div>
+              </div>
+
+              {/* Fixed Footer */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setIsAddDrawingModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingNewDrawing}
+                  className="px-5 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary/95 text-xs font-extrabold text-white shadow-md shadow-brand-primary/10 transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {isSubmittingNewDrawing ? 'Registering Document...' : 'Register Document'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* MANUALLY CREATE DISCIPLINE FOLDER MODAL */}
       {isAddDisciplineModalOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
@@ -1404,10 +1892,13 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
 
             <div className="p-6 space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Select Discipline to Create Folder
-                </label>
-                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Select Standard Folder / Discipline (17 Categories)
+                  </label>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Standard PMC Structure</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
                   {Object.entries(DISCIPLINE_CATALOG).map(([code, meta]) => {
                     const existingCodes = (projectData?.disciplines || []).map((d: any) => d.code);
                     const isAlreadyCreated = existingCodes.includes(code);
@@ -1419,18 +1910,27 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
                         type="button"
                         disabled={isAlreadyCreated}
                         onClick={() => setNewDisciplineCode(code)}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${isAlreadyCreated
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${isAlreadyCreated
                           ? 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-50 cursor-not-allowed'
                           : isSelected
-                            ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
-                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-emerald-300'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
                           }`}
                       >
                         <div className="flex items-center justify-between font-bold">
-                          <span className="font-mono">{code}</span>
-                          {isAlreadyCreated && <span className="text-[9px] uppercase font-bold text-slate-400">Created</span>}
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>{code}</span>
+                          {isAlreadyCreated ? (
+                            <span className="text-[9px] uppercase font-bold text-slate-400">Created</span>
+                          ) : (
+                            <span className={`text-[9px] font-semibold ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>{meta.category}</span>
+                          )}
                         </div>
-                        <span className="text-[11px] font-semibold mt-1 truncate">{meta.name}</span>
+                        <span className="text-[11px] font-bold mt-1 leading-snug">{meta.name}</span>
+                        {meta.subfolders && meta.subfolders.length > 0 && (
+                          <span className={`text-[9px] mt-1 line-clamp-1 ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
+                            {meta.subfolders.length} subfolders (e.g. {meta.subfolders[0]})
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -1525,39 +2025,49 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
 
       {/* QUICK DOCUMENT PREVIEW MODAL */}
       {previewDoc && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80">
-              <div className="flex items-center gap-3">
-                <span className="p-2 rounded-xl bg-blue-600/10 text-blue-600 font-mono font-extrabold text-xs border border-blue-600/20">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-900/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh]">
+            <div className="flex flex-col gap-2.5 p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80">
+              {/* Row 1: Code Badge & Close Button */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="px-2.5 py-1 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 font-mono font-extrabold text-xs border border-blue-600/20">
                   {previewDoc.drawingCode || previewDoc.drawingNumber}
                 </span>
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-800 dark:text-white">{previewDoc.drawingTitle}</h3>
-                  <p className="text-[10px] text-slate-400 font-mono">
-                    Revision: {previewDoc.currentRevision || previewDoc.revisionNumber || 'R00'} | Discipline: {previewDoc.disciplineCode || previewDoc.discipline}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={previewDoc.fileUrl || previewDoc.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-sm"
-                >
-                  <Download className="w-3.5 h-3.5" /> Open in Cloudinary
-                </a>
                 <button
                   onClick={() => setPreviewDoc(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer ml-auto"
+                  title="Close Modal"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {/* Row 2: Title */}
+              <div>
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white leading-snug">
+                  {previewDoc.drawingTitle}
+                </h3>
+                {/* Row 3: Metadata */}
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono flex items-center gap-2 flex-wrap mt-1">
+                  <span>Rev: <strong className="text-slate-700 dark:text-slate-200">{previewDoc.currentRevision || previewDoc.revisionNumber || 'R00'}</strong></span>
+                  <span>• Disc: <strong className="text-slate-700 dark:text-slate-200">{previewDoc.disciplineCode || previewDoc.discipline}</strong></span>
+                </div>
+              </div>
+
+              {/* Row 4: Controls */}
+              <div className="flex items-center gap-2 pt-1">
+                <a
+                  href={previewDoc.fileUrl || previewDoc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-sm whitespace-nowrap w-full sm:w-auto"
+                >
+                  <Download className="w-3.5 h-3.5 shrink-0" /> <span>Open in Cloudinary</span>
+                </a>
+              </div>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 flex items-center justify-center bg-slate-950/40">
+            <div className="p-2 sm:p-6 overflow-y-auto flex-1 flex items-center justify-center bg-slate-950/40">
               {(() => {
                 const rawUrl = previewDoc.fileUrl || previewDoc.url || '';
                 const isImage = /\.(png|jpg|jpeg|webp|gif|svg)(\?.*)?$/i.test(rawUrl);

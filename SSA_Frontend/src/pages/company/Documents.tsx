@@ -15,6 +15,7 @@ import {
 } from '../../data/hospitalAnnexureData'
 import {
   Plus,
+  FolderPlus,
   Sparkles,
   Zap,
   Download,
@@ -62,18 +63,14 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isSubmittingDrawing, setIsSubmittingDrawing] = useState(false)
-  const [search] = useState('')
 
-  // ── Master Drawing List (MDL) Filters ──────────────────────────────────────
-  const [selectedDiscipline] = useState<'ALL' | DisciplineCode>('ALL')
-  const [selectedLevel] = useState<'ALL' | string>('ALL')
 
   // ── Auto-Generation Modal State ──────────────────────────────────────────
   const [isAutoGenModalOpen, setIsAutoGenModalOpen] = useState(false)
   const [genProjectCode, setGenProjectCode] = useState('GVR-2026-001')
   const [genFloors, setGenFloors] = useState<string[]>(['B1', 'GF', '01', '02', '03', '04', 'TR'])
   const [genDisciplines, setGenDisciplines] = useState<DisciplineCode[]>([
-    'AR', 'IN', 'ST', 'EL', 'PL', 'FF', 'HV', 'MG', 'LV', 'VT', 'SP'
+    'PI', 'SI', 'AR', 'IN', 'ST', 'MEP', 'BQ', 'TD', 'CR', 'SA', 'TQ', 'MC', 'PS', 'CA', 'AP', 'TC', 'HO'
   ])
 
   // ── Annexure A Hospital Room Selector State ──────────────────────────────
@@ -83,6 +80,11 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
   const [isAnnexureModalOpen, setIsAnnexureModalOpen] = useState(false)
   const [df1FreezeStatus, setDf1FreezeStatus] = useState<'Draft' | 'Approved (Gate G2 Frozen)'>('Draft')
 
+  // ── Separate Discipline Folder Modal State ────────────────────────────────
+  const [isAddFolderModalOpen, setIsAddFolderModalOpen] = useState(false)
+  const [newFolderDiscCode, setNewFolderDiscCode] = useState<DisciplineCode>('ST')
+  const [dynamicDisciplines, setDynamicDisciplines] = useState<DisciplineCode[]>([])
+
   // Dynamically derive created discipline folders for the project
   const availableDisciplines: DisciplineCode[] = useMemo(() => {
     try {
@@ -91,7 +93,7 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
         activePCode ? `ssa_disciplines_${activePCode}` : null,
       ])).filter(Boolean) as string[]
 
-      let createdCodes: DisciplineCode[] = []
+      let createdCodes: DisciplineCode[] = [...dynamicDisciplines]
 
       for (const key of keys) {
         const raw = localStorage.getItem(key)
@@ -113,7 +115,7 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
 
     // Default to 'AR' if no folders created yet
     return ['AR']
-  }, [genProjectCode, urlProjectId, isAddOpen])
+  }, [genProjectCode, urlProjectId, isAddOpen, dynamicDisciplines])
 
   // Form hooks with auto-calculation
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<DrawingFormInputs>({
@@ -274,6 +276,40 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
     }
   }
 
+  // Handle Separate Discipline Folder Creation
+  const handleCreateFolder = async (codeToCreate: DisciplineCode) => {
+    if (!codeToCreate) return
+    const pCode = (genProjectCode || urlProjectId || 'GVR-2026-001').trim()
+    const folderCode = `${pCode}-${codeToCreate}`
+
+    try {
+      await api.post(`/projects/${pCode}/disciplines`, { disciplineCode: codeToCreate })
+    } catch (err) {
+      console.warn('API discipline creation fallback:', err)
+    }
+
+    try {
+      const keys = Array.from(new Set([
+        `ssa_disciplines_${pCode}`,
+        urlProjectId ? `ssa_disciplines_${urlProjectId}` : null
+      ])).filter(Boolean) as string[]
+
+      for (const key of keys) {
+        const existing = JSON.parse(localStorage.getItem(key) || '[]')
+        if (!existing.some((d: any) => d.code === codeToCreate)) {
+          localStorage.setItem(key, JSON.stringify([...existing, { code: codeToCreate, folderCode }]))
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+
+    setDynamicDisciplines((prev) => Array.from(new Set([...prev, codeToCreate])))
+    setValue('discipline', codeToCreate)
+    alert(`Discipline Folder "${codeToCreate} — ${DISCIPLINE_CATALOG[codeToCreate]?.name || codeToCreate}" created successfully!`)
+    window.dispatchEvent(new Event('ssa_drawing_registered'))
+  }
+
   // Handle Auto-Generate Master Drawing List
   const handleAutoGenerateMDL = () => {
     if (!genProjectCode.trim()) {
@@ -297,10 +333,12 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
     setIsAutoGenModalOpen(false)
   }
 
+
+
   // Export Transmittal Schedule to CSV
   const exportTransmittalCSV = () => {
     const headers = ['Drawing Number', 'Title', 'Discipline', 'Level', 'Revision', 'Revision Date', 'Status', 'Prepared By', 'Approved By', 'Purpose']
-    const rows = filteredDrawings.map((d) => [
+    const rows = drawings.map((d) => [
       `"${d.drawingNumber}"`,
       `"${d.drawingTitle}"`,
       `"${d.discipline || ''}"`,
@@ -322,20 +360,6 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
     link.click()
     document.body.removeChild(link)
   }
-
-  // Filtered Drawings based on Search, Discipline, and Level
-  const filteredDrawings = drawings.filter(d => {
-    const matchesSearch =
-      d.drawingTitle.toLowerCase().includes(search.toLowerCase()) ||
-      d.drawingNumber.toLowerCase().includes(search.toLowerCase()) ||
-      d.projectCode.toLowerCase().includes(search.toLowerCase()) ||
-      (d.purpose && d.purpose.toLowerCase().includes(search.toLowerCase()))
-
-    const matchesDiscipline = selectedDiscipline === 'ALL' || d.discipline === selectedDiscipline
-    const matchesLevel = selectedLevel === 'ALL' || d.level === selectedLevel
-
-    return matchesSearch && matchesDiscipline && matchesLevel
-  })
 
   // Calculate Area Summary from Annexure A
   const areaSummary = calculateHospitalAreaStatement(selectedAnnexureModules)
@@ -401,6 +425,12 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
               title="Export Transmittal CSV"
             >
               <Download className="w-4 h-4" /> Export CSV
+            </button>
+            <button
+              onClick={() => setIsAddFolderModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-all duration-200 cursor-pointer animate-fade-in"
+            >
+              <FolderPlus className="w-4 h-4" /> Add Folder
             </button>
             <button
               onClick={() => setIsAddOpen(true)}
@@ -963,7 +993,7 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Select Active Engineering Packages (11 Disciplines)
+                    Select Active Standard Project Folders & Engineering Packages (17 Folders)
                   </label>
                   <div className="flex gap-2 text-[10px] font-bold">
                     <button
@@ -1260,6 +1290,101 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── SEPARATE CREATE DISCIPLINE FOLDER MODAL ── */}
+      {isAddFolderModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-8 text-brand-charcoal dark:text-white">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-emerald-50 dark:bg-emerald-950/40">
+              <div className="flex items-center gap-2.5">
+                <FolderPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <div>
+                  <h2 className="text-base font-extrabold text-brand-charcoal dark:text-white">
+                    Create Discipline Folder
+                  </h2>
+                  <p className="text-[11px] text-brand-gray font-mono">
+                    Project: {urlProjectId || genProjectCode || 'GVR-2026-001'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddFolderModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                <Plus className="w-5 h-5 rotate-45" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Select Discipline to Create Folder
+                </label>
+                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+                  {Object.entries(DISCIPLINE_CATALOG).map(([code, meta]) => {
+                    const isAlreadyCreated = availableDisciplines.includes(code as DisciplineCode)
+                    const isSelected = newFolderDiscCode === code
+
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setNewFolderDiscCode(code as DisciplineCode)}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                            : isAlreadyCreated
+                              ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-emerald-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between font-bold">
+                          <span className="font-mono">{code}</span>
+                          {isAlreadyCreated && <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>Created</span>}
+                        </div>
+                        <span className="text-[11px] font-semibold mt-1 truncate">{meta.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Folder Code Preview */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1 font-mono">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Folder Code Preview</p>
+                <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
+                  {(urlProjectId || genProjectCode || 'GVR-2026-001')}-{newFolderDiscCode}
+                </p>
+                <p className="text-[10px] text-slate-500 font-sans mt-1">
+                  Initializes master drawing deliverables specifically for <strong>{DISCIPLINE_CATALOG[newFolderDiscCode]?.name || newFolderDiscCode}</strong>.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddFolderModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCreateFolder(newFolderDiscCode)
+                    setIsAddFolderModalOpen(false)
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  <span>Create Discipline Folder</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

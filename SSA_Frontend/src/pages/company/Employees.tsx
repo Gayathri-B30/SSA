@@ -418,16 +418,16 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
           ) : (
             <div className="glass-card rounded-2xl border border-slate-200 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-brand-charcoal">
+                <table className="min-w-[850px] w-full text-left text-xs text-brand-charcoal">
                   <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
                     <tr className="border-b border-slate-200">
-                      <th className="p-4 font-semibold">Employee ID</th>
-                      <th className="p-4 font-semibold">Name</th>
-                      <th className="p-4 font-semibold">Contact Info</th>
-                      <th className="p-4 font-semibold">Dept & Designation</th>
-                      <th className="p-4 font-semibold">Joining Date</th>
-                      <th className="p-4 font-semibold">Status</th>
-                      <th className="p-4 font-semibold text-right">Actions</th>
+                      <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Employee ID</th>
+                      <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Name</th>
+                      <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Contact Info</th>
+                      <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Dept & Designation</th>
+                      <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Joining Date</th>
+                      <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Status</th>
+                      <th className="p-3.5 sm:p-4 font-semibold text-right whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -444,35 +444,25 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
                           onClick={() => setSelectedProfile(emp)}
                           className="hover:bg-slate-50 transition-colors cursor-pointer group"
                         >
-                          <td className="p-4 font-mono font-bold text-brand-primary">{emp.id}</td>
-                          <td className="p-4">
+                          <td className="p-3.5 sm:p-4 font-mono font-bold text-brand-primary whitespace-nowrap">{emp.id}</td>
+                          <td className="p-3.5 sm:p-4 min-w-[180px]">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-800 text-brand-primary border border-brand-primary/20 flex items-center justify-center font-bold text-xs">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 text-brand-primary border border-brand-primary/20 flex items-center justify-center font-bold text-xs shrink-0">
                                 {emp.name.charAt(0)}
                               </div>
                               <span className="font-bold text-brand-charcoal group-hover:text-brand-primary transition-colors">{emp.name}</span>
                             </div>
                           </td>
-                          <td className="p-4">
-                            <div className="space-y-0.5 text-brand-gray">
-                              <p className="truncate">{emp.email}</p>
-                              <p>{emp.phone}</p>
-                            </div>
+                          <td className="p-3.5 sm:p-4 text-brand-gray space-y-0.5 whitespace-nowrap min-w-[160px]">
+                            <p className="truncate">{emp.email}</p>
+                            <p>{emp.phone}</p>
                           </td>
-                          <td className="p-4">
-                            <div className="space-y-0.5">
-                              <p className="text-brand-charcoal font-semibold">{emp.designation}</p>
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <p className="text-gray-500 text-[10px] uppercase">{emp.department}</p>
-                                <span className="text-slate-300 text-[10px]">•</span>
-                                <span className="text-brand-primary text-[10px] font-semibold">
-                                  {emp.branchId ? (branchesList.find(b => b.id === emp.branchId)?.name || emp.branchId) : 'Headquarters'}
-                                </span>
-                              </div>
-                            </div>
+                          <td className="p-3.5 sm:p-4 min-w-[150px]">
+                            <p className="text-brand-charcoal font-semibold">{emp.designation}</p>
+                            <p className="text-gray-500 text-[10px] uppercase">{emp.department}</p>
                           </td>
-                          <td className="p-4 text-brand-gray">{emp.joiningDate}</td>
-                          <td className="p-4">
+                          <td className="p-3.5 sm:p-4 text-brand-gray whitespace-nowrap">{emp.joiningDate}</td>
+                          <td className="p-3.5 sm:p-4 whitespace-nowrap">
                             <span
                               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${emp.status === 'Active'
                                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
@@ -490,26 +480,23 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
                               {emp.status}
                             </span>
                           </td>
-                          <td className="p-4 text-right">
+                          <td className="p-3.5 sm:p-4 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => setSelectedProfile(emp)}
-                                className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors"
-                                title="Quick View"
+                                className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 bg-transparent transition-colors"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={(e) => openEditModal(emp, e)}
-                                className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent transition-colors"
-                                title="Edit Employee"
+                                className="p-1.5 rounded-lg text-brand-gray hover:text-brand-charcoal hover:bg-slate-100 bg-transparent transition-colors"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={(e) => handleDeleteClick(emp, e)}
                                 className="p-1.5 rounded-lg text-red-400 hover:text-brand-charcoal hover:bg-red-500/10 transition-colors"
-                                title="Delete Employee"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -532,7 +519,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
                     <button
                       disabled={currentPage === 1}
                       onClick={() => handlePageChange(currentPage - 1)}
-                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal disabled:opacity-40"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
@@ -551,7 +538,7 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
                     <button
                       disabled={currentPage === totalPages}
                       onClick={() => handlePageChange(currentPage + 1)}
-                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-brand-gray hover:text-brand-charcoal disabled:opacity-40"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -571,24 +558,24 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
             <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md">92.5% AVG Attendance</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-brand-charcoal">
+            <table className="min-w-[700px] w-full text-left text-xs text-brand-charcoal">
               <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
                 <tr className="border-b border-slate-200">
-                  <th className="p-4 font-semibold">Employee</th>
-                  <th className="p-4 font-semibold">Present Days</th>
-                  <th className="p-4 font-semibold">Absent Days</th>
-                  <th className="p-4 font-semibold">Late Check-ins</th>
-                  <th className="p-4 font-semibold">Status Rating</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Employee</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Present Days</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Absent Days</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Late Check-ins</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Status Rating</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {mockAttendance.map((rec: any) => (
                   <tr key={rec.employeeId} className="hover:bg-white/10 transition-colors">
-                    <td className="p-4 font-bold text-brand-charcoal">{rec.name}</td>
-                    <td className="p-4 font-bold text-emerald-400">{rec.present} Days</td>
-                    <td className="p-4 font-bold text-brand-gold">{rec.absent} Days</td>
-                    <td className="p-4 font-bold text-amber-400">{rec.late} Times</td>
-                    <td className="p-4">
+                    <td className="p-3.5 sm:p-4 font-bold text-brand-charcoal whitespace-nowrap">{rec.name}</td>
+                    <td className="p-3.5 sm:p-4 font-bold text-emerald-400 whitespace-nowrap">{rec.present} Days</td>
+                    <td className="p-3.5 sm:p-4 font-bold text-brand-gold whitespace-nowrap">{rec.absent} Days</td>
+                    <td className="p-3.5 sm:p-4 font-bold text-amber-400 whitespace-nowrap">{rec.late} Times</td>
+                    <td className="p-3.5 sm:p-4 whitespace-nowrap">
                       <div className="flex items-center gap-2.5">
                         <div className="w-24 bg-slate-100 h-2 rounded-full overflow-hidden">
                           <div className="bg-brand-primary h-full rounded-full" style={{ width: `${rec.percentage}%` }} />
@@ -611,32 +598,32 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
             <h3 className="text-sm font-extrabold text-brand-charcoal uppercase tracking-wider">Active Leave Requests</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-brand-charcoal">
+            <table className="min-w-[800px] w-full text-left text-xs text-brand-charcoal">
               <thead className="bg-slate-50 text-brand-gray uppercase tracking-wider">
                 <tr className="border-b border-slate-200">
-                  <th className="p-4 font-semibold">Request ID</th>
-                  <th className="p-4 font-semibold">Employee Name</th>
-                  <th className="p-4 font-semibold">Leave Type</th>
-                  <th className="p-4 font-semibold">Dates Schedule</th>
-                  <th className="p-4 font-semibold text-center">Duration</th>
-                  <th className="p-4 font-semibold">Approval Status</th>
-                  <th className="p-4 font-semibold text-right">Approve Actions</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Request ID</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Employee Name</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Leave Type</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Dates Schedule</th>
+                  <th className="p-3.5 sm:p-4 font-semibold text-center whitespace-nowrap">Duration</th>
+                  <th className="p-3.5 sm:p-4 font-semibold whitespace-nowrap">Approval Status</th>
+                  <th className="p-3.5 sm:p-4 font-semibold text-right whitespace-nowrap">Approve Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {leaves.map((l) => (
                   <tr key={l.id} className="hover:bg-white/10 transition-colors">
-                    <td className="p-4 font-mono font-bold text-brand-primary">{l.id}</td>
-                    <td className="p-4 font-bold text-brand-charcoal">{l.name}</td>
-                    <td className="p-4">{l.type} Leave</td>
-                    <td className="p-4 text-brand-gray">
+                    <td className="p-3.5 sm:p-4 font-mono font-bold text-brand-primary whitespace-nowrap">{l.id}</td>
+                    <td className="p-3.5 sm:p-4 font-bold text-brand-charcoal whitespace-nowrap">{l.name}</td>
+                    <td className="p-3.5 sm:p-4 whitespace-nowrap">{l.type} Leave</td>
+                    <td className="p-3.5 sm:p-4 text-brand-gray whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-brand-primary" />
                         <span>{l.startDate} to {l.endDate}</span>
                       </div>
                     </td>
-                    <td className="p-4 text-center font-extrabold text-brand-charcoal">{l.days} Days</td>
-                    <td className="p-4">
+                    <td className="p-3.5 sm:p-4 text-center font-extrabold text-brand-charcoal whitespace-nowrap">{l.days} Days</td>
+                    <td className="p-3.5 sm:p-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status === 'Approved'
                           ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
@@ -871,8 +858,13 @@ export const Employees: React.FC<EmployeesProps> = ({ defaultTab = 'list' }) => 
                   <label className="block text-xs font-semibold text-brand-gray uppercase tracking-wider mb-2">Work Email <span className="text-red-500">*</span></label>
                   <input
                     type="email"
+                    maxLength={100}
                     {...register('email', {
                       required: 'Email address is required.',
+                      maxLength: {
+                        value: 100,
+                        message: 'Email cannot exceed 100 characters'
+                      },
                       pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Please enter a valid email address.' }
                     })}
                     className={`w-full bg-slate-50 border outline-none rounded-xl px-4 py-2.5 text-xs text-brand-charcoal transition-all ${errors.email

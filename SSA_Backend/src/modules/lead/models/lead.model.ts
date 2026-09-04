@@ -29,6 +29,9 @@ export class LeadModel {
   // FRONTEND ALIGNMENT FIELDS
   // ==========================================
   @Column({ type: 'varchar', nullable: true })
+  clientId?: string;
+
+  @Column({ type: 'varchar', nullable: true })
   leadTitle?: string;
 
   @Column({ type: 'varchar', nullable: true })

@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 export class BranchRepository {
   private async getRepository(): Promise<Repository<BranchModel>> {
     const dataSource = await getDataSource();
-    return dataSource.getRepository('BranchModel');
+    return dataSource.getRepository(BranchModel);
   }
 
   async findAllByCompanyId(companyId: string): Promise<BranchModel[]> {

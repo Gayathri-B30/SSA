@@ -10,32 +10,32 @@ import { Repository, IsNull } from 'typeorm';
 export class LeadRepository {
   private async getLeadRepo(): Promise<Repository<LeadModel>> {
     const dataSource = await getDataSource();
-    return dataSource.getRepository('LeadModel');
+    return dataSource.getRepository(LeadModel);
   }
 
   private async getCategoryRepo(): Promise<Repository<ProjectCategoryModel>> {
     const dataSource = await getDataSource();
-    return dataSource.getRepository('ProjectCategoryModel');
+    return dataSource.getRepository(ProjectCategoryModel);
   }
 
   private async getFieldRepo(): Promise<Repository<CategoryTemplateFieldModel>> {
     const dataSource = await getDataSource();
-    return dataSource.getRepository('CategoryTemplateFieldModel');
+    return dataSource.getRepository(CategoryTemplateFieldModel);
   }
 
   private async getValueRepo(): Promise<Repository<LeadRequirementValueModel>> {
     const dataSource = await getDataSource();
-    return dataSource.getRepository('LeadRequirementValueModel');
+    return dataSource.getRepository(LeadRequirementValueModel);
   }
 
   private async getDeliverableTemplateRepo(): Promise<Repository<DeliverableTemplateModel>> {
     const dataSource = await getDataSource();
-    return dataSource.getRepository('DeliverableTemplateModel');
+    return dataSource.getRepository(DeliverableTemplateModel);
   }
 
   private async getLeadDeliverableRepo(): Promise<Repository<LeadDeliverableModel>> {
     const dataSource = await getDataSource();
-    return dataSource.getRepository('LeadDeliverableModel');
+    return dataSource.getRepository(LeadDeliverableModel);
   }
 
   // Categories

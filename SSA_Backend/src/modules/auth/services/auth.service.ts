@@ -138,7 +138,7 @@ export class AuthService {
 
     // Try to find in BranchRepository
     const dataSource = await getDataSource();
-    const branchRepo = dataSource.getRepository<BranchModel>('BranchModel');
+    const branchRepo = dataSource.getRepository(BranchModel);
     let branch = await branchRepo.findOne({ where: { branchId: username } });
     if (!branch) {
       branch = await branchRepo.findOne({ where: { code: username } });
@@ -225,13 +225,13 @@ export class AuthService {
 
   async getBranchById(id: number): Promise<BranchModel | null> {
     const dataSource = await getDataSource();
-    const branchRepo = dataSource.getRepository<BranchModel>('BranchModel');
+    const branchRepo = dataSource.getRepository(BranchModel);
     return await branchRepo.findOne({ where: { id } });
   }
 
   async branchLogin(username: string, password: string): Promise<{ user: any; token: string }> {
     const dataSource = await getDataSource();
-    const branchRepo = dataSource.getRepository<BranchModel>('BranchModel');
+    const branchRepo = dataSource.getRepository(BranchModel);
     
     // Find branch by branchId or code
     let branch = await branchRepo.findOne({ where: { branchId: username } });

@@ -8,7 +8,9 @@ import {
   FiCheckSquare, FiUsers, FiActivity, FiMessageSquare,
   FiPaperclip, FiX, FiUploadCloud, FiChevronRight, FiSave,
   FiPlusCircle, FiArrowLeft, FiInfo, FiAlertCircle,
-  FiFileText, FiImage, FiFile, FiCheckCircle
+  FiFileText, FiImage, FiFile, FiCheckCircle,
+  FiSearch, FiChevronDown, FiCheck, FiLock,
+  FiAlertTriangle, FiTrash2
 } from 'react-icons/fi'
 import { MdOutlineArchitecture, MdOutlineSource } from 'react-icons/md'
 import api from '../../../services/api'
@@ -168,6 +170,13 @@ const inputCls = `
   focus:outline-none focus:ring-2 focus:ring-[#33a18a]/20 focus:border-[#33a18a]
 `.trim()
 
+const readOnlyInputCls = `
+  bg-slate-100/80 dark:bg-slate-800/80 
+  text-slate-600 dark:text-slate-300 
+  border-slate-200 dark:border-slate-700/60 
+  cursor-not-allowed select-none
+`.trim()
+
 const selectCls = `
   w-full px-3.5 py-2.5 rounded-xl border text-sm transition-all duration-200 appearance-none cursor-pointer
   bg-white dark:bg-slate-900 
@@ -210,13 +219,21 @@ const FormField: React.FC<{
   required?: boolean
   error?: string
   hint?: string
+  locked?: boolean
   children: React.ReactNode
-}> = ({ label, required, error, hint, children }) => (
+}> = ({ label, required, error, hint, locked, children }) => (
   <div className="flex flex-col gap-1.5">
-    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
-      {label}
-      {required && <span className="text-red-500 font-bold">*</span>}
-    </label>
+    <div className="flex items-center justify-between">
+      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500 font-bold">*</span>}
+      </label>
+      {locked && (
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
+          <FiLock size={9} className="text-[#33a18a]" /> Auto-filled
+        </span>
+      )}
+    </div>
     {children}
     {hint && !error && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{hint}</p>}
     <AnimatePresence>
@@ -255,6 +272,49 @@ export const CreateLead: React.FC = () => {
 
   const [clientsList, setClientsList] = useState<any[]>([])
   const [selectedClientId, setSelectedClientId] = useState<string>('')
+  const [clientSearchQuery, setClientSearchQuery] = useState<string>('')
+  const [isClientDropdownOpen, setIsClientDropdownOpen] = useState<boolean>(false)
+  const clientDropdownRef = useRef<HTMLDivElement>(null)
+  const clientSearchInputRef = useRef<HTMLInputElement>(null)
+
+  // Close client dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+        setIsClientDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Auto focus search input when dropdown opens
+  useEffect(() => {
+    if (isClientDropdownOpen && clientSearchInputRef.current) {
+      clientSearchInputRef.current.focus()
+    }
+  }, [isClientDropdownOpen])
+
+  // Filter clients by Name or Mobile Number
+  const filteredClientsForDropdown = clientsList.filter((c: any) => {
+    if (!clientSearchQuery.trim()) return true
+    const q = clientSearchQuery.toLowerCase().trim()
+    const qDigits = clientSearchQuery.replace(/\D/g, '')
+
+    const nameMatch = (c.clientName || '').toLowerCase().includes(q) ||
+      (c.company || '').toLowerCase().includes(q) ||
+      (c.contactPerson || '').toLowerCase().includes(q) ||
+      (c.clientCode || '').toLowerCase().includes(q)
+
+    const cMobileClean = (c.mobile || '').replace(/\D/g, '')
+    const mobileMatch = (c.mobile || '').includes(q) || (qDigits.length > 0 && cMobileClean.includes(qDigits))
+
+    return nameMatch || mobileMatch
+  })
+
+  const selectedClientObj = clientsList.find(
+    (c: any) => c.id === selectedClientId || c.clientCode === selectedClientId
+  )
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -281,7 +341,7 @@ export const CreateLead: React.FC = () => {
     setValue,
     getValues,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<LeadFormData>({
     mode: 'onChange',
     defaultValues: {
@@ -302,6 +362,49 @@ export const CreateLead: React.FC = () => {
       contractorStatus: 'Not Appointed',
     },
   })
+
+  // ── Cancel / Unsaved Progress Confirmation Modal State ──
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
+  const [isSavingDraftOnExit, setIsSavingDraftOnExit] = useState(false)
+
+  const isFormHalfFilled = useCallback(() => {
+    const v = getValues()
+    const hasTextData = Boolean(
+      v.clientName?.trim() ||
+      v.leadTitle?.trim() ||
+      v.mobile?.trim() ||
+      v.email?.trim() ||
+      v.company?.trim() ||
+      v.contactPerson?.trim() ||
+      v.siteAddress?.trim() ||
+      v.city?.trim() ||
+      v.state?.trim() ||
+      v.surveyNumber?.trim() ||
+      v.siteArea ||
+      v.estimatedBudget ||
+      v.expectedStartDate ||
+      v.expectedCompletionDate ||
+      v.decisionMakers?.trim() ||
+      v.remarks?.trim() ||
+      v.preferredVendors?.trim()
+    )
+    const hasCustomSelections = Boolean(
+      selectedClientId ||
+      uploadedFiles.length > 0 ||
+      selectedServices.length > 0 ||
+      v.projectType ||
+      v.projectSubType
+    )
+    return hasTextData || hasCustomSelections || isDirty
+  }, [getValues, selectedClientId, uploadedFiles, selectedServices, isDirty])
+
+  const handleCancel = () => {
+    if (isFormHalfFilled()) {
+      setIsCancelModalOpen(true)
+    } else {
+      navigate('/crm/leads')
+    }
+  }
 
   // ── New Client Popup Modal State & Handlers ──
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false)
@@ -349,6 +452,16 @@ export const CreateLead: React.FC = () => {
     setIsNewClientModalOpen(true)
   }, [])
 
+  const duplicateClientModalWarning = React.useMemo(() => {
+    const mobileClean = (clientModalForm.mobile || '').replace(/\D/g, '')
+    if (mobileClean.length < 10) return null
+    const match = clientsList.find((c: any) => {
+      const cMobile = (c.mobile || '').replace(/\D/g, '')
+      return (cMobile && cMobile === mobileClean) || (c.mobile && c.mobile.trim() === clientModalForm.mobile.trim())
+    })
+    return match || null
+  }, [clientModalForm.mobile, clientsList])
+
   const handleSaveNewClient = async (e: React.FormEvent) => {
     e.preventDefault()
     const errs: Record<string, string> = {}
@@ -359,22 +472,60 @@ export const CreateLead: React.FC = () => {
       errs.clientName = 'Client name is required'
     } else if (nameTrim.length < 2) {
       errs.clientName = 'Client name must be at least 2 characters'
+    } else if (nameTrim.length > 60) {
+      errs.clientName = 'Client name cannot exceed 60 characters'
     } else if (!/^[a-zA-Z\s.'-]+$/.test(nameTrim)) {
       errs.clientName = 'Client name should contain only letters, dots, and hyphens'
+    }
+
+    // Company Validation (Optional)
+    const companyTrim = (clientModalForm.company || '').trim()
+    if (companyTrim.length > 0) {
+      if (companyTrim.length < 2) {
+        errs.company = 'Company name must be at least 2 characters'
+      } else if (companyTrim.length > 100) {
+        errs.company = 'Company name cannot exceed 100 characters'
+      }
+    }
+
+    // Contact Person Validation (Optional)
+    const contactTrim = (clientModalForm.contactPerson || '').trim()
+    if (contactTrim.length > 0) {
+      if (contactTrim.length < 2) {
+        errs.contactPerson = 'Contact person name must be at least 2 characters'
+      } else if (contactTrim.length > 60) {
+        errs.contactPerson = 'Contact person name cannot exceed 60 characters'
+      }
     }
 
     // Mobile Number Validation
     const mobileClean = clientModalForm.mobile.replace(/[\s\-+]/g, '')
     if (!clientModalForm.mobile.trim()) {
       errs.mobile = 'Mobile number is required'
-    } else if (!/^[6-9]\d{9}$/.test(mobileClean)) {
+    } else if (mobileClean.length !== 10 || !/^[6-9]\d{9}$/.test(mobileClean)) {
       errs.mobile = 'Enter a valid 10-digit mobile number (e.g. 9840012345)'
+    } else {
+      const mobileCleanDigits = mobileClean.replace(/\D/g, '')
+      const duplicateClient = clientsList.find((c: any) => {
+        const cMobileDigits = (c.mobile || '').replace(/\D/g, '')
+        return (cMobileDigits && cMobileDigits === mobileCleanDigits) || (c.mobile && c.mobile.trim() === clientModalForm.mobile.trim())
+      })
+
+      if (duplicateClient) {
+        const alertMsg = `A client with mobile number "${clientModalForm.mobile}" already exists in the system (${duplicateClient.clientName || duplicateClient.company || 'Existing Client'} - ${duplicateClient.clientCode || 'Registered'}).`
+        alert(alertMsg)
+        errs.mobile = `Mobile number is already registered to ${duplicateClient.clientName || duplicateClient.company}`
+      }
     }
 
     // Email Address Validation
     const emailTrim = clientModalForm.email.trim()
     if (!emailTrim) {
       errs.email = 'Email address is required'
+    } else if (emailTrim.length < 5) {
+      errs.email = 'Email address must be at least 5 characters'
+    } else if (emailTrim.length > 100) {
+      errs.email = 'Email address cannot exceed 100 characters'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
       errs.email = 'Enter a valid email address (e.g. client@example.com)'
     }
@@ -385,34 +536,58 @@ export const CreateLead: React.FC = () => {
       errs.address = 'Office / Correspondence address is required'
     } else if (addrTrim.length < 5) {
       errs.address = 'Address must be at least 5 characters'
+    } else if (addrTrim.length > 250) {
+      errs.address = 'Address cannot exceed 250 characters'
     }
 
     // City Validation
-    if (!clientModalForm.city.trim()) {
+    const cityTrim = clientModalForm.city.trim()
+    if (!cityTrim) {
       errs.city = 'City is required'
+    } else if (cityTrim.length < 2) {
+      errs.city = 'City must be at least 2 characters'
+    } else if (cityTrim.length > 60) {
+      errs.city = 'City cannot exceed 60 characters'
     }
 
     // State Validation
-    if (!clientModalForm.state.trim()) {
+    const stateTrim = clientModalForm.state.trim()
+    if (!stateTrim) {
       errs.state = 'State is required'
+    } else if (stateTrim.length < 2) {
+      errs.state = 'State must be at least 2 characters'
+    } else if (stateTrim.length > 60) {
+      errs.state = 'State cannot exceed 60 characters'
     }
 
     // Aadhar Number Validation (Optional)
     const aadharClean = (clientModalForm.aadharNo || '').replace(/\s/g, '')
-    if (aadharClean.length > 0 && !/^[2-9]\d{11}$/.test(aadharClean)) {
-      errs.aadharNo = 'Aadhar number must be a valid 12-digit number (e.g. 1234 5678 9012)'
+    if (aadharClean.length > 0) {
+      if (aadharClean.length !== 12 || !/^[2-9]\d{11}$/.test(aadharClean)) {
+        errs.aadharNo = 'Aadhar number must be a valid 12-digit number (e.g. 1234 5678 9012)'
+      }
     }
 
     // PAN Number Validation (Optional)
     const panClean = (clientModalForm.panNo || '').trim().toUpperCase()
-    if (panClean.length > 0 && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panClean)) {
-      errs.panNo = 'PAN format must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)'
+    if (panClean.length > 0) {
+      if (panClean.length !== 10 || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panClean)) {
+        errs.panNo = 'PAN format must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)'
+      }
     }
 
     // GST Number Validation (Optional)
     const gstClean = (clientModalForm.gstNo || '').trim().toUpperCase()
-    if (gstClean.length > 0 && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstClean)) {
-      errs.gstNo = 'GST format must be 15-character GSTIN (e.g. 33ABCDE1234F1Z5)'
+    if (gstClean.length > 0) {
+      if (gstClean.length !== 15 || !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstClean)) {
+        errs.gstNo = 'GST format must be 15-character GSTIN (e.g. 33ABCDE1234F1Z5)'
+      }
+    }
+
+    // Remarks Validation (Optional)
+    const remarksTrim = (clientModalForm.remarks || '').trim()
+    if (remarksTrim.length > 250) {
+      errs.remarks = 'Remarks cannot exceed 250 characters'
     }
 
     if (Object.keys(errs).length > 0) {
@@ -682,12 +857,12 @@ export const CreateLead: React.FC = () => {
         setDbBranches(branches)
         setDbEmployees(employeesRes.data || [])
 
-        const clients = clientsRes.data?.data || (Array.isArray(clientsRes.data) ? clientsRes.data : [])
-        setClientsList(clients)
+        const rawClients = clientsRes.data?.data || (Array.isArray(clientsRes.data) ? clientsRes.data : [])
+        setClientsList(rawClients)
 
         // Handle prefilled client from URL param ?clientId=...
-        if (prefillClientId && clients.length > 0) {
-          const matchedClient = clients.find((c: any) => c.id === prefillClientId || c.clientCode === prefillClientId)
+        if (prefillClientId && rawClients.length > 0) {
+          const matchedClient = rawClients.find((c: any) => c.id === prefillClientId || c.clientCode === prefillClientId)
           if (matchedClient) {
             setSelectedClientId(matchedClient.id)
             setValue('clientId', matchedClient.id)
@@ -1220,23 +1395,19 @@ export const CreateLead: React.FC = () => {
     }
   }
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (silent = false): Promise<boolean> => {
     const values = getValues()
-    if (!values.clientName) {
-      alert('Please enter a Client Name to save draft.')
-      return
-    }
-    if (!values.projectType) {
-      alert('Please select a Project Type to save draft.')
-      return
-    }
+    const effectiveClientName = values.clientName?.trim() || values.company?.trim() || values.leadTitle?.trim() || 'Untitled Draft Lead'
 
     try {
-      const matchedCategory = findMatchingCategory(values.projectType, dbCategories)
+      let matchedCategory = values.projectType ? findMatchingCategory(values.projectType, dbCategories) : undefined
+      if (!matchedCategory && dbCategories.length > 0) {
+        matchedCategory = dbCategories[0]
+      }
 
       if (!matchedCategory) {
-        alert('Invalid Project Type selected (could not map to database category).')
-        return
+        alert('Could not save draft because no project category is available in the database.')
+        return false
       }
 
       // Map category build type
@@ -1247,15 +1418,15 @@ export const CreateLead: React.FC = () => {
       const payload = {
         // Core required fields
         categoryId: matchedCategory.id,
-        clientName: values.clientName,
+        clientName: effectiveClientName,
         status: 'Draft',
         categoryValues: values.categoryValues || {},
         attachments: uploadedFiles,
 
         // Legacy composite fields (kept for backward compat — populated from individual columns)
-        projectName: values.leadTitle || '',
+        projectName: values.leadTitle || effectiveClientName,
         organisation: values.company || '',
-        leadSource: values.leadSource || '',
+        leadSource: values.leadSource || 'Website',
         subType: values.projectSubType || '',
         buildType,
         locationAddress: values.siteAddress || '',
@@ -1269,25 +1440,25 @@ export const CreateLead: React.FC = () => {
         // ── Individual DB columns ──────────────────────────────────────
         // Lead / Client identification
         clientId: values.clientId || selectedClientId || null,
-        leadTitle: values.leadTitle || '',
+        leadTitle: values.leadTitle || effectiveClientName,
         company: values.company || '',
         contactPerson: values.contactPerson || '',
         mobile: values.mobile || '',
         email: values.email || '',
 
         // Project classification
-        projectType: values.projectType || '',
+        projectType: values.projectType || matchedCategory.name.split('—')[0].trim(),
         projectSubType: values.projectSubType || '',
-        leadCategory: values.category || '',
+        leadCategory: values.category || 'New Construction',
 
         // Site location
         siteAddress: values.siteAddress || '',
         city: values.city || '',
         state: values.state || '',
-        country: values.country || '',
+        country: values.country || 'India',
         surveyNumber: values.surveyNumber || '',
         siteArea: values.siteArea || '',
-        unit: values.unit || '',
+        unit: values.unit || 'Sq.ft',
 
         // Budget & timeline
         estimatedBudget: values.estimatedBudget || '',
@@ -1339,15 +1510,20 @@ export const CreateLead: React.FC = () => {
         : await api.post('/leads', payload)
 
       if (response.data?.success) {
-        alert('Draft saved successfully!')
-        navigate('/crm/leads')
+        if (!silent) {
+          alert('Draft saved successfully!')
+          navigate('/crm/leads')
+        }
+        return true
       } else {
         alert(`Failed to save draft: ${response.data?.message || 'Unknown error'}`)
+        return false
       }
     } catch (err: any) {
       console.error('Error saving draft:', err)
       const errorMsg = err.response?.data?.message || err.message || 'Server error'
       alert(`Error saving draft: ${errorMsg}`)
+      return false
     }
   }
 
@@ -1370,6 +1546,14 @@ export const CreateLead: React.FC = () => {
         <div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleCancel}
+              title="Back to Leads"
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-all cursor-pointer shadow-xs"
+            >
+              <FiArrowLeft size={16} />
+            </button>
             <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-3xl">
               {isEditMode ? 'Modify Lead' : 'Lead Creation'}
             </h1>
@@ -1412,7 +1596,7 @@ export const CreateLead: React.FC = () => {
                         <FiUsers className="text-[#33a18a]" size={15} /> Associated Client Profile <span className="text-[#33a18a]">*</span>
                       </label>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Choose a registered client from the directory or register a new client via popup.
+                        Search and select a registered client by <strong>Name</strong> or <strong>Mobile Number</strong>, or register a new client.
                       </p>
                     </div>
 
@@ -1425,44 +1609,205 @@ export const CreateLead: React.FC = () => {
                     </button>
                   </div>
 
-                  <div className="relative flex items-center">
-                    <select
-                      value={selectedClientId}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        if (val === '__NEW__') {
-                          openNewClientModal()
-                        } else {
-                          handleSelectClient(val)
+                  {/* ── Searchable Client Combobox Dropdown ── */}
+                  <div className="relative" ref={clientDropdownRef}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setIsClientDropdownOpen(!isClientDropdownOpen)
                         }
                       }}
-                      className={`${selectCls} font-semibold ${selectedClientId ? 'pr-20' : ''}`}
+                      className={`${inputCls} flex items-center justify-between cursor-pointer select-none bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 ${
+                        isClientDropdownOpen ? 'ring-2 ring-[#33a18a]/20 border-[#33a18a]' : ''
+                      }`}
                     >
-                      <option value="">-- Select Registered Client Profile --</option>
-                      <option value="__NEW__" className="font-bold text-[#33a18a]">
-                        + Register New Client
-                      </option>
-                      {clientsList.length > 0 && (
-                        <optgroup label="── Registered Clients ──">
-                          {clientsList.map((c: any) => (
-                            <option key={c.id} value={c.id}>
-                              {c.clientCode ? `[${c.clientCode}] ` : ''}{c.clientName || c.company} {c.company && c.company !== c.clientName ? `(${c.company})` : ''} {c.city ? `• ${c.city}` : ''}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-                    </select>
+                      <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
+                        <FiSearch className="text-slate-400 shrink-0" size={14} />
+                        {selectedClientObj ? (
+                          <div className="flex items-center gap-2 truncate text-xs">
+                            {selectedClientObj.clientCode && (
+                              <span className="font-mono font-bold text-[#33a18a] bg-[#33a18a]/10 px-1.5 py-0.5 rounded text-[11px] shrink-0">
+                                {selectedClientObj.clientCode}
+                              </span>
+                            )}
+                            <span className="font-bold text-slate-900 dark:text-white truncate">
+                              {selectedClientObj.clientName || selectedClientObj.company}
+                            </span>
+                            {selectedClientObj.company && selectedClientObj.company !== selectedClientObj.clientName && (
+                              <span className="text-slate-500 dark:text-slate-400 text-[11px] truncate hidden sm:inline">
+                                ({selectedClientObj.company})
+                              </span>
+                            )}
+                            {selectedClientObj.mobile && (
+                              <span className="text-slate-600 dark:text-slate-300 font-mono text-[11px] flex items-center gap-1 shrink-0 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                <FiPhone size={10} className="text-[#33a18a]" /> {selectedClientObj.mobile}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 font-medium text-xs truncate">
+                            Search by Client Name or Mobile Number...
+                          </span>
+                        )}
+                      </div>
 
-                    {selectedClientId && (
-                      <button
-                        type="button"
-                        onClick={() => handleSelectClient('')}
-                        className="absolute right-9 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-400 hover:text-red-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-1"
-                        title="Clear selected client"
-                      >
-                        <FiX size={12} /> Clear
-                      </button>
-                    )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {selectedClientId && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSelectClient('')
+                              setClientSearchQuery('')
+                            }}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-0.5 cursor-pointer"
+                            title="Clear client selection"
+                          >
+                            <FiX size={12} /> Clear
+                          </button>
+                        )}
+                        <FiChevronDown
+                          size={15}
+                          className={`text-slate-400 transition-transform duration-200 ${
+                            isClientDropdownOpen ? 'rotate-180 text-[#33a18a]' : ''
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* ── Dropdown Popover Menu ── */}
+                    <AnimatePresence>
+                      {isClientDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute z-50 left-0 right-0 mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-80"
+                        >
+                          {/* Search Header Input inside Dropdown */}
+                          <div className="p-2.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+                            <div className="relative flex items-center">
+                              <FiSearch className="absolute left-3 text-slate-400" size={13} />
+                              <input
+                                ref={clientSearchInputRef}
+                                type="text"
+                                value={clientSearchQuery}
+                                onChange={(e) => setClientSearchQuery(e.target.value)}
+                                placeholder="Type name or mobile number (e.g. Gokul, 98400...)"
+                                className="w-full pl-8 pr-7 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#33a18a] focus:ring-1 focus:ring-[#33a18a] text-slate-800 dark:text-white"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              {clientSearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setClientSearchQuery('')
+                                  }}
+                                  className="absolute right-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                >
+                                  <FiX size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quick Action: Register New Client */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsClientDropdownOpen(false)
+                              openNewClientModal()
+                            }}
+                            className="w-full text-left px-3.5 py-2.5 flex items-center gap-2 text-xs font-bold text-[#33a18a] hover:bg-[#33a18a]/10 border-b border-slate-100 dark:border-slate-800 transition-colors cursor-pointer"
+                          >
+                            <FiPlusCircle size={14} /> + Register New Client Profile
+                          </button>
+
+                          {/* Client List */}
+                          <div className="overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 max-h-56">
+                            {filteredClientsForDropdown.length === 0 ? (
+                              <div className="p-6 text-center text-xs text-slate-400 space-y-1">
+                                <p className="font-semibold text-slate-500 dark:text-slate-400">
+                                  No clients found matching "{clientSearchQuery}"
+                                </p>
+                                <p className="text-[11px]">Search by Name or 10-digit Mobile Number.</p>
+                              </div>
+                            ) : (
+                              filteredClientsForDropdown.map((c: any) => {
+                                const isSelected = selectedClientId === c.id || selectedClientId === c.clientCode
+                                return (
+                                  <div
+                                    key={c.id || c.clientCode}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => {
+                                      handleSelectClient(c.id)
+                                      setIsClientDropdownOpen(false)
+                                      setClientSearchQuery('')
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        handleSelectClient(c.id)
+                                        setIsClientDropdownOpen(false)
+                                        setClientSearchQuery('')
+                                      }
+                                    }}
+                                    className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs transition-colors cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-[#33a18a]/10 text-[#33a18a]'
+                                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-200'
+                                    }`}
+                                  >
+                                    <div className="min-w-0 flex-1 space-y-0.5">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {c.clientCode && (
+                                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded">
+                                            {c.clientCode}
+                                          </span>
+                                        )}
+                                        <span className="font-bold text-slate-900 dark:text-white">
+                                          {c.clientName || c.company}
+                                        </span>
+                                        {c.company && c.company !== c.clientName && (
+                                          <span className="text-[11px] text-slate-400">
+                                            ({c.company})
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+                                        {c.mobile && (
+                                          <span className="font-mono flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
+                                            <FiPhone size={10} className="text-[#33a18a]" /> {c.mobile}
+                                          </span>
+                                        )}
+                                        {c.contactPerson && c.contactPerson !== c.clientName && (
+                                          <span className="truncate">Contact: {c.contactPerson}</span>
+                                        )}
+                                        {c.city && <span>• {c.city}</span>}
+                                      </div>
+                                    </div>
+
+                                    {isSelected && (
+                                      <span className="shrink-0 text-[#33a18a] bg-[#33a18a]/20 p-1 rounded-full">
+                                        <FiCheck size={12} />
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              })
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               </div>
@@ -1482,6 +1827,8 @@ export const CreateLead: React.FC = () => {
                   maxLength={150}
                   {...register('leadTitle', {
                     required: 'Lead title is required',
+                    minLength: { value: 2, message: 'Title must be at least 2 characters' },
+                    maxLength: { value: 150, message: 'Title cannot exceed 150 characters' },
                     pattern: {
                       value: /^[a-zA-Z0-9]+[a-zA-Z0-9\s.'&()_-]*$/,
                       message: 'Title must start with an alphanumeric character and contain valid text'
@@ -1498,111 +1845,130 @@ export const CreateLead: React.FC = () => {
               </FormField>
 
               {/* Client Name */}
-              <FormField label="Client Name" required error={errors.clientName?.message}>
+              <FormField label="Client Name" required error={errors.clientName?.message} locked={!!selectedClientId} hint={selectedClientId ? 'Auto-filled from selected client profile (Read-only)' : undefined}>
                 <input
-                  maxLength={50}
+                  maxLength={60}
+                  readOnly={!!selectedClientId}
                   {...register('clientName', {
                     required: 'Client name is required',
+                    minLength: { value: 2, message: 'Client name must be at least 2 characters' },
+                    maxLength: { value: 60, message: 'Client name cannot exceed 60 characters' },
                     pattern: {
                       value: /^[a-zA-Z]+[a-zA-Z\s.'-]*$/,
                       message: 'Name must start with a letter and contain only alphabets/spaces/dots'
                     },
                     onChange: (e) => {
+                      if (selectedClientId) return
                       const val = e.target.value.replace(/[^a-zA-Z\s.'-]/g, '')
                       e.target.value = val
                       setValue('clientName', val, { shouldValidate: true })
                     }
                   })}
                   placeholder="Full name"
-                  className={inputCls}
+                  className={`${inputCls} ${selectedClientId ? readOnlyInputCls : ''}`}
                 />
               </FormField>
 
               {/* Company */}
-              <FormField label="Company / Organization" error={errors.company?.message}>
+              <FormField label="Company / Organization" error={errors.company?.message} locked={!!selectedClientId && !!selectedClientObj?.company}>
                 <input
                   maxLength={100}
+                  readOnly={!!selectedClientId}
                   {...register('company', {
+                    minLength: { value: 2, message: 'Company name must be at least 2 characters' },
+                    maxLength: { value: 100, message: 'Company name cannot exceed 100 characters' },
                     pattern: {
                       value: /^[a-zA-Z0-9]+[a-zA-Z0-9\s.'&()_-]*$/,
                       message: 'Company name must start with an alphanumeric character'
                     },
                     onChange: (e) => {
+                      if (selectedClientId) return
                       const val = e.target.value.replace(/[^a-zA-Z0-9\s.'&()_-]/g, '')
                       e.target.value = val
                       setValue('company', val, { shouldValidate: true })
                     }
                   })}
                   placeholder="Company or organization"
-                  className={inputCls}
+                  className={`${inputCls} ${selectedClientId ? readOnlyInputCls : ''}`}
                 />
               </FormField>
 
               {/* Contact Person */}
-              <FormField label="Contact Person" error={errors.contactPerson?.message}>
+              <FormField label="Contact Person" error={errors.contactPerson?.message} locked={!!selectedClientId && !!selectedClientObj?.contactPerson}>
                 <div className="relative">
                   <FiUser size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   <input
-                    maxLength={50}
+                    maxLength={60}
+                    readOnly={!!selectedClientId}
                     {...register('contactPerson', {
+                      minLength: { value: 2, message: 'Contact person must be at least 2 characters' },
+                      maxLength: { value: 60, message: 'Contact person cannot exceed 60 characters' },
                       pattern: {
                         value: /^[a-zA-Z]+[a-zA-Z\s.'-]*$/,
                         message: 'Contact name must start with a letter and contain only alphabets/spaces/dots'
                       },
                       onChange: (e) => {
+                        if (selectedClientId) return
                         const val = e.target.value.replace(/[^a-zA-Z\s.'-]/g, '')
                         e.target.value = val
                         setValue('contactPerson', val, { shouldValidate: true })
                       }
                     })}
                     placeholder="Primary contact name"
-                    className={`${inputCls} pl-9`}
+                    className={`${inputCls} pl-9 ${selectedClientId ? readOnlyInputCls : ''}`}
                   />
                 </div>
               </FormField>
 
               {/* Mobile */}
-              <FormField label="Mobile Number" required error={errors.mobile?.message}>
+              <FormField label="Mobile Number" required error={errors.mobile?.message} locked={!!selectedClientId}>
                 <div className="relative">
                   <FiPhone size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   <input
                     type="tel"
+                    maxLength={10}
+                    readOnly={!!selectedClientId}
                     {...register('mobile', {
                       required: 'Mobile number is required',
+                      minLength: { value: 10, message: 'Enter a valid 10-digit mobile number' },
+                      maxLength: { value: 10, message: 'Mobile number must be 10 digits' },
                       pattern: {
                         value: /^[6-9]\d{9}$/,
                         message: 'Enter a valid 10-digit mobile number',
                       },
                       onChange: (e) => {
+                        if (selectedClientId) return
                         const val = e.target.value.replace(/\D/g, '')
                         e.target.value = val
                         setValue('mobile', val, { shouldValidate: true })
                       }
                     })}
                     placeholder="98XXXXXXXX"
-                    maxLength={10}
-                    className={`${inputCls} pl-9`}
+                    className={`${inputCls} pl-9 ${selectedClientId ? readOnlyInputCls : ''}`}
                   />
                 </div>
               </FormField>
 
               {/* Email */}
               <div className="sm:col-span-2">
-                <FormField label="Email Address" required error={errors.email?.message}>
+                <FormField label="Email Address" required error={errors.email?.message} locked={!!selectedClientId || isEditMode}>
                   <div className="relative">
                     <FiMail size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <input
+                      maxLength={100}
+                      readOnly={!!selectedClientId || isEditMode}
                       {...register('email', {
                         required: 'Email is required',
+                        minLength: { value: 5, message: 'Email must be at least 5 characters' },
+                        maxLength: { value: 100, message: 'Email cannot exceed 100 characters' },
                         pattern: {
                           value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                           message: 'Enter a valid email address',
                         },
                       })}
                       type="email"
-                      readOnly={isEditMode}
                       placeholder="client@example.com"
-                      className={`${inputCls} pl-9 ${isEditMode ? 'opacity-65 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
+                      className={`${inputCls} pl-9 ${selectedClientId || isEditMode ? readOnlyInputCls : ''}`}
                     />
                   </div>
                 </FormField>
@@ -1611,7 +1977,10 @@ export const CreateLead: React.FC = () => {
               {/* Decision Makers */}
               <FormField label="Decision Makers" error={errors.decisionMakers?.message}>
                 <input
-                  {...register('decisionMakers')}
+                  maxLength={100}
+                  {...register('decisionMakers', {
+                    maxLength: { value: 100, message: 'Decision makers cannot exceed 100 characters' }
+                  })}
                   placeholder="e.g. Board, Managing Director, Owner"
                   className={inputCls}
                 />
@@ -1841,39 +2210,81 @@ export const CreateLead: React.FC = () => {
           <SectionCard title="Site Details" icon={<FiMapPin size={15} />} delay={0.15}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <FormField label="Site Address" error={errors.siteAddress?.message}>
+                <FormField label="Site Address" error={errors.siteAddress?.message} locked={!!selectedClientId && !!selectedClientObj?.address}>
                   <div className="relative">
                     <FiMapPin size={13} className="absolute left-3.5 top-3.5 text-slate-400 pointer-events-none" />
                     <input
-                      {...register('siteAddress')}
+                      maxLength={300}
+                      readOnly={!!selectedClientId && !!selectedClientObj?.address}
+                      {...register('siteAddress', {
+                        minLength: { value: 5, message: 'Site address must be at least 5 characters' },
+                        maxLength: { value: 300, message: 'Site address cannot exceed 300 characters' }
+                      })}
                       placeholder="Full site / plot address"
-                      className={`${inputCls} pl-9`}
+                      className={`${inputCls} pl-9 ${selectedClientId && selectedClientObj?.address ? readOnlyInputCls : ''}`}
                     />
                   </div>
                 </FormField>
               </div>
 
-              <FormField label="City" error={errors.city?.message}>
-                <input {...register('city')} placeholder="City" className={inputCls} />
+              <FormField label="City" error={errors.city?.message} locked={!!selectedClientId && !!selectedClientObj?.city}>
+                <input
+                  maxLength={60}
+                  readOnly={!!selectedClientId && !!selectedClientObj?.city}
+                  {...register('city', {
+                    minLength: { value: 2, message: 'City must be at least 2 characters' },
+                    maxLength: { value: 60, message: 'City cannot exceed 60 characters' }
+                  })}
+                  placeholder="City"
+                  className={`${inputCls} ${selectedClientId && selectedClientObj?.city ? readOnlyInputCls : ''}`}
+                />
               </FormField>
 
-              <FormField label="State" error={errors.state?.message}>
-                <input {...register('state')} placeholder="State" className={inputCls} />
+              <FormField label="State" error={errors.state?.message} locked={!!selectedClientId && !!selectedClientObj?.state}>
+                <input
+                  maxLength={60}
+                  readOnly={!!selectedClientId && !!selectedClientObj?.state}
+                  {...register('state', {
+                    minLength: { value: 2, message: 'State must be at least 2 characters' },
+                    maxLength: { value: 60, message: 'State cannot exceed 60 characters' }
+                  })}
+                  placeholder="State"
+                  className={`${inputCls} ${selectedClientId && selectedClientObj?.state ? readOnlyInputCls : ''}`}
+                />
               </FormField>
 
-              <FormField label="Country" error={errors.country?.message}>
-                <input {...register('country')} placeholder="Country" className={inputCls} />
+              <FormField label="Country" error={errors.country?.message} locked={!!selectedClientId && !!selectedClientObj?.country}>
+                <input
+                  maxLength={60}
+                  readOnly={!!selectedClientId && !!selectedClientObj?.country}
+                  {...register('country', {
+                    minLength: { value: 2, message: 'Country must be at least 2 characters' },
+                    maxLength: { value: 60, message: 'Country cannot exceed 60 characters' }
+                  })}
+                  placeholder="Country"
+                  className={`${inputCls} ${selectedClientId && selectedClientObj?.country ? readOnlyInputCls : ''}`}
+                />
               </FormField>
 
               <FormField label="Survey Number" error={errors.surveyNumber?.message}>
-                <input {...register('surveyNumber')} placeholder="Survey / Plot No." className={inputCls} />
+                <input
+                  maxLength={50}
+                  {...register('surveyNumber', {
+                    maxLength: { value: 50, message: 'Survey number cannot exceed 50 characters' }
+                  })}
+                  placeholder="Survey / Plot No."
+                  className={inputCls}
+                />
               </FormField>
 
               <div className="sm:col-span-2 grid grid-cols-3 gap-3">
                 <div className="col-span-2">
                   <FormField label="Site Area" error={errors.siteArea?.message}>
                     <input
-                      {...register('siteArea')}
+                      maxLength={12}
+                      {...register('siteArea', {
+                        maxLength: { value: 12, message: 'Site area cannot exceed 12 digits' }
+                      })}
                       type="number"
                       min="0"
                       placeholder="0"
@@ -1907,17 +2318,38 @@ export const CreateLead: React.FC = () => {
 
               {/* Topography Levels */}
               <FormField label="Topography / Levels" error={errors.topographyLevels?.message}>
-                <input {...register('topographyLevels')} placeholder="e.g. Flat, Sloped, 1m contour" className={inputCls} />
+                <input
+                  maxLength={100}
+                  {...register('topographyLevels', {
+                    maxLength: { value: 100, message: 'Topography details cannot exceed 100 characters' }
+                  })}
+                  placeholder="e.g. Flat, Sloped, 1m contour"
+                  className={inputCls}
+                />
               </FormField>
 
               {/* Access Road Width */}
               <FormField label="Access Road Width" error={errors.accessRoadWidth?.message}>
-                <input {...register('accessRoadWidth')} placeholder="e.g. 30 ft, 12m" className={inputCls} />
+                <input
+                  maxLength={50}
+                  {...register('accessRoadWidth', {
+                    maxLength: { value: 50, message: 'Road width cannot exceed 50 characters' }
+                  })}
+                  placeholder="e.g. 30 ft, 12m"
+                  className={inputCls}
+                />
               </FormField>
 
               {/* Orientation */}
               <FormField label="Orientation" error={errors.orientation?.message}>
-                <input {...register('orientation')} placeholder="e.g. North-East, East facing" className={inputCls} />
+                <input
+                  maxLength={50}
+                  {...register('orientation', {
+                    maxLength: { value: 50, message: 'Orientation cannot exceed 50 characters' }
+                  })}
+                  placeholder="e.g. North-East, East facing"
+                  className={inputCls}
+                />
               </FormField>
 
               {/* Existing Structures */}
@@ -1948,7 +2380,14 @@ export const CreateLead: React.FC = () => {
               {/* Adjacent Developments */}
               <div className="sm:col-span-2">
                 <FormField label="Adjacent Developments" error={errors.adjacentDevelopments?.message}>
-                  <input {...register('adjacentDevelopments')} placeholder="e.g. Public park on East, residential apartments on North" className={inputCls} />
+                  <input
+                    maxLength={200}
+                    {...register('adjacentDevelopments', {
+                      maxLength: { value: 200, message: 'Adjacent developments cannot exceed 200 characters' }
+                    })}
+                    placeholder="e.g. Public park on East, residential apartments on North"
+                    className={inputCls}
+                  />
                 </FormField>
               </div>
             </div>
@@ -1960,7 +2399,14 @@ export const CreateLead: React.FC = () => {
           <SectionCard title="Site Utilities" icon={<FiMapPin size={15} />} delay={0.16}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="EB Sanctioned Load" error={errors.ebSupplySanctionedLoad?.message}>
-                <input {...register('ebSupplySanctionedLoad')} placeholder="e.g. 15 kW, 3 Phase" className={inputCls} />
+                <input
+                  maxLength={50}
+                  {...register('ebSupplySanctionedLoad', {
+                    maxLength: { value: 50, message: 'EB Load cannot exceed 50 characters' }
+                  })}
+                  placeholder="e.g. 15 kW, 3 Phase"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Water Source" error={errors.waterSource?.message}>
@@ -1999,7 +2445,14 @@ export const CreateLead: React.FC = () => {
 
               <div className="sm:col-span-2">
                 <FormField label="Telecom / Connectivity" error={errors.telecom?.message}>
-                  <input {...register('telecom')} placeholder="e.g. Fiber line active, landline connectivity" className={inputCls} />
+                  <input
+                    maxLength={100}
+                    {...register('telecom', {
+                      maxLength: { value: 100, message: 'Telecom details cannot exceed 100 characters' }
+                    })}
+                    placeholder="e.g. Fiber line active, landline connectivity"
+                    className={inputCls}
+                  />
                 </FormField>
               </div>
             </div>
@@ -2011,27 +2464,69 @@ export const CreateLead: React.FC = () => {
           <SectionCard title="Regulatory Context" icon={<FiMapPin size={15} />} delay={0.17}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="Approving Authority" error={errors.approvingAuthority?.message}>
-                <input {...register('approvingAuthority')} placeholder="e.g. CMDA, DTCP, Corporation" className={inputCls} />
+                <input
+                  maxLength={100}
+                  {...register('approvingAuthority', {
+                    maxLength: { value: 100, message: 'Approving authority cannot exceed 100 characters' }
+                  })}
+                  placeholder="e.g. CMDA, DTCP, Corporation"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Land Use Zoning" error={errors.landUseZoning?.message}>
-                <input {...register('landUseZoning')} placeholder="e.g. Residential, Commercial, Mixed-Use" className={inputCls} />
+                <input
+                  maxLength={100}
+                  {...register('landUseZoning', {
+                    maxLength: { value: 100, message: 'Zoning details cannot exceed 100 characters' }
+                  })}
+                  placeholder="e.g. Residential, Commercial, Mixed-Use"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="FSI & Coverage Details" error={errors.fsiCoverageKnown?.message}>
-                <input {...register('fsiCoverageKnown')} placeholder="e.g. FSI 1.5, Max Coverage 65%" className={inputCls} />
+                <input
+                  maxLength={100}
+                  {...register('fsiCoverageKnown', {
+                    maxLength: { value: 100, message: 'FSI details cannot exceed 100 characters' }
+                  })}
+                  placeholder="e.g. FSI 1.5, Max Coverage 65%"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Setbacks / Height Restrictions" error={errors.setbacksHeightRestrictions?.message}>
-                <input {...register('setbacksHeightRestrictions')} placeholder="e.g. Setback Front 3m, Side 2m" className={inputCls} />
+                <input
+                  maxLength={100}
+                  {...register('setbacksHeightRestrictions', {
+                    maxLength: { value: 100, message: 'Setbacks details cannot exceed 100 characters' }
+                  })}
+                  placeholder="e.g. Setback Front 3m, Side 2m"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Prior Approvals / Violations" error={errors.priorApprovalsViolations?.message}>
-                <input {...register('priorApprovalsViolations')} placeholder="Any details of existing approvals or violations" className={inputCls} />
+                <input
+                  maxLength={200}
+                  {...register('priorApprovalsViolations', {
+                    maxLength: { value: 200, message: 'Approvals/violations cannot exceed 200 characters' }
+                  })}
+                  placeholder="Any details of existing approvals or violations"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Special Restrictions" error={errors.specialRestrictions?.message}>
-                <input {...register('specialRestrictions')} placeholder="e.g. Heritage zone, CRZ, Airport funnel zone" className={inputCls} />
+                <input
+                  maxLength={200}
+                  {...register('specialRestrictions', {
+                    maxLength: { value: 200, message: 'Special restrictions cannot exceed 200 characters' }
+                  })}
+                  placeholder="e.g. Heritage zone, CRZ, Airport funnel zone"
+                  className={inputCls}
+                />
               </FormField>
             </div>
           </SectionCard>
@@ -2048,7 +2543,11 @@ export const CreateLead: React.FC = () => {
                       ₹
                     </span>
                     <input
-                      {...register('estimatedBudget', { required: 'Budget estimate is required' })}
+                      maxLength={15}
+                      {...register('estimatedBudget', {
+                        required: 'Budget estimate is required',
+                        maxLength: { value: 15, message: 'Budget amount cannot exceed 15 digits' }
+                      })}
                       type="number"
                       min="0"
                       placeholder="0.00"
@@ -2083,7 +2582,10 @@ export const CreateLead: React.FC = () => {
               {/* Expected Floors */}
               <FormField label="Expected Floors" error={errors.expectedFloors?.message}>
                 <input
-                  {...register('expectedFloors')}
+                  maxLength={50}
+                  {...register('expectedFloors', {
+                    maxLength: { value: 50, message: 'Expected floors cannot exceed 50 characters' }
+                  })}
                   placeholder="e.g. G + 2 Floors"
                   className={inputCls}
                 />
@@ -2134,15 +2636,36 @@ export const CreateLead: React.FC = () => {
               </FormField>
 
               <FormField label="Preferred Vendors" error={errors.preferredVendors?.message}>
-                <input {...register('preferredVendors')} placeholder="e.g. Specific cement or steel brands" className={inputCls} />
+                <input
+                  maxLength={150}
+                  {...register('preferredVendors', {
+                    maxLength: { value: 150, message: 'Preferred vendors cannot exceed 150 characters' }
+                  })}
+                  placeholder="e.g. Specific cement or steel brands"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Site Visit Expectation" error={errors.siteVisitFrequencyExpectation?.message}>
-                <input {...register('siteVisitFrequencyExpectation')} placeholder="e.g. Weekly, 2 times a month" className={inputCls} />
+                <input
+                  maxLength={100}
+                  {...register('siteVisitFrequencyExpectation', {
+                    maxLength: { value: 100, message: 'Site visit expectation cannot exceed 100 characters' }
+                  })}
+                  placeholder="e.g. Weekly, 2 times a month"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Reporting Expectations" error={errors.reportingExpectations?.message}>
-                <input {...register('reportingExpectations')} placeholder="e.g. Weekly status reports, monthly audit" className={inputCls} />
+                <input
+                  maxLength={100}
+                  {...register('reportingExpectations', {
+                    maxLength: { value: 100, message: 'Reporting expectations cannot exceed 100 characters' }
+                  })}
+                  placeholder="e.g. Weekly status reports, monthly audit"
+                  className={inputCls}
+                />
               </FormField>
             </div>
           </SectionCard>
@@ -2230,19 +2753,47 @@ export const CreateLead: React.FC = () => {
           <SectionCard title="Design Preferences" icon={<MdOutlineArchitecture size={16} />} delay={0.27}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="Style References / Inspiration" error={errors.styleReferencesInspiration?.message}>
-                <input {...register('styleReferencesInspiration')} placeholder="e.g. Modernist, Minimalist, Traditional" className={inputCls} />
+                <input
+                  maxLength={200}
+                  {...register('styleReferencesInspiration', {
+                    maxLength: { value: 200, message: 'Style references cannot exceed 200 characters' }
+                  })}
+                  placeholder="e.g. Modernist, Minimalist, Traditional"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Sustainability Goals" error={errors.sustainabilityGoals?.message}>
-                <input {...register('sustainabilityGoals')} placeholder="e.g. Solar panel integration, Net-zero" className={inputCls} />
+                <input
+                  maxLength={200}
+                  {...register('sustainabilityGoals', {
+                    maxLength: { value: 200, message: 'Sustainability goals cannot exceed 200 characters' }
+                  })}
+                  placeholder="e.g. Solar panel integration, Net-zero"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Vaastu / Orientation" error={errors.vaastuOrientationRequirements?.message}>
-                <input {...register('vaastuOrientationRequirements')} placeholder="e.g. Strict Vaastu, East facing entry" className={inputCls} />
+                <input
+                  maxLength={150}
+                  {...register('vaastuOrientationRequirements', {
+                    maxLength: { value: 150, message: 'Vaastu details cannot exceed 150 characters' }
+                  })}
+                  placeholder="e.g. Strict Vaastu, East facing entry"
+                  className={inputCls}
+                />
               </FormField>
 
               <FormField label="Material Preferences" error={errors.materialPreferences?.message}>
-                <input {...register('materialPreferences')} placeholder="e.g. Natural stone cladding, exposed brick" className={inputCls} />
+                <input
+                  maxLength={200}
+                  {...register('materialPreferences', {
+                    maxLength: { value: 200, message: 'Material preferences cannot exceed 200 characters' }
+                  })}
+                  placeholder="e.g. Natural stone cladding, exposed brick"
+                  className={inputCls}
+                />
               </FormField>
             </div>
           </SectionCard>
@@ -2376,7 +2927,10 @@ export const CreateLead: React.FC = () => {
           <SectionCard title="Remarks" icon={<FiMessageSquare size={15} />} delay={0.4}>
             <FormField label="Internal Remarks / Notes" error={errors.remarks?.message}>
               <textarea
-                {...register('remarks')}
+                maxLength={1000}
+                {...register('remarks', {
+                  maxLength: { value: 1000, message: 'Remarks cannot exceed 1000 characters' }
+                })}
                 rows={5}
                 placeholder="Add client requirements, special notes, follow-up details, or any internal observations..."
                 className={`${inputCls} resize-none`}
@@ -2503,7 +3057,7 @@ export const CreateLead: React.FC = () => {
           <div className="flex items-center gap-3 ml-auto">
             <button
               type="button"
-              onClick={() => navigate('/crm/leads')}
+              onClick={handleCancel}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
             >
               <FiArrowLeft size={14} />
@@ -2512,7 +3066,7 @@ export const CreateLead: React.FC = () => {
             {!isEditMode && (
               <button
                 type="button"
-                onClick={handleSaveDraft}
+                onClick={() => handleSaveDraft(false)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer"
                 style={{ color: PRIMARY_COLOR, borderColor: `${PRIMARY_COLOR}40`, backgroundColor: `${PRIMARY_COLOR}0a` }}
               >
@@ -2577,6 +3131,7 @@ export const CreateLead: React.FC = () => {
                     type="text"
                     value={clientModalForm.clientName}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, clientName: e.target.value })}
+                    maxLength={60}
                     placeholder="e.g. Gokul Ramakrishnan"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
                   />
@@ -2592,9 +3147,11 @@ export const CreateLead: React.FC = () => {
                     type="text"
                     value={clientModalForm.company}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, company: e.target.value })}
+                    maxLength={100}
                     placeholder="e.g. GR Prestige Projects"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
                   />
+                  {clientModalErrors.company && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.company}</p>}
                 </div>
 
                 {/* Contact Person */}
@@ -2606,9 +3163,11 @@ export const CreateLead: React.FC = () => {
                     type="text"
                     value={clientModalForm.contactPerson}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, contactPerson: e.target.value })}
+                    maxLength={60}
                     placeholder="Primary contact name"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
                   />
+                  {clientModalErrors.contactPerson && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.contactPerson}</p>}
                 </div>
 
                 {/* Client Type */}
@@ -2638,10 +3197,22 @@ export const CreateLead: React.FC = () => {
                     type="tel"
                     value={clientModalForm.mobile}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, mobile: e.target.value })}
+                    maxLength={10}
                     placeholder="+91 98400 00000"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
                   />
                   {clientModalErrors.mobile && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.mobile}</p>}
+                  {duplicateClientModalWarning && (
+                    <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 flex items-start gap-2 text-amber-800 dark:text-amber-300 text-xs">
+                      <FiAlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <div>
+                        <p className="font-bold">Duplicate Mobile Number Alert</p>
+                        <p className="text-[11px] leading-tight text-amber-700 dark:text-amber-400/90 mt-0.5">
+                          This mobile number is already registered to <span className="font-bold underline">{duplicateClientModalWarning.clientName || duplicateClientModalWarning.company}</span> ({duplicateClientModalWarning.clientCode || 'Existing Client'}).
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Email */}
@@ -2653,6 +3224,7 @@ export const CreateLead: React.FC = () => {
                     type="email"
                     value={clientModalForm.email}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, email: e.target.value })}
+                    maxLength={100}
                     placeholder="client@organization.com"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
                   />
@@ -2668,6 +3240,7 @@ export const CreateLead: React.FC = () => {
                     rows={2}
                     value={clientModalForm.address}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, address: e.target.value })}
+                    maxLength={250}
                     placeholder="Street address, building, locality..."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] resize-none"
                   />
@@ -2683,6 +3256,7 @@ export const CreateLead: React.FC = () => {
                     type="text"
                     value={clientModalForm.city}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, city: e.target.value })}
+                    maxLength={60}
                     placeholder="e.g. Chennai"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
                   />
@@ -2696,6 +3270,7 @@ export const CreateLead: React.FC = () => {
                     type="text"
                     value={clientModalForm.state}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, state: e.target.value })}
+                    maxLength={60}
                     placeholder="e.g. Tamil Nadu"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a]"
                   />
@@ -2709,6 +3284,7 @@ export const CreateLead: React.FC = () => {
                     type="text"
                     value={clientModalForm.gstNo}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, gstNo: e.target.value })}
+                    maxLength={15}
                     placeholder="e.g. 33AABCG1234F1Z5"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] uppercase font-mono"
                   />
@@ -2720,6 +3296,7 @@ export const CreateLead: React.FC = () => {
                     type="text"
                     value={clientModalForm.panNo}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, panNo: e.target.value })}
+                    maxLength={10}
                     placeholder="e.g. AABCG1234F"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] uppercase font-mono"
                   />
@@ -2732,7 +3309,7 @@ export const CreateLead: React.FC = () => {
                     value={clientModalForm.aadharNo}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, aadharNo: e.target.value })}
                     placeholder="e.g. 1234 5678 9012"
-                    maxLength={16}
+                    maxLength={14}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] font-mono"
                   />
                   {clientModalErrors.aadharNo && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.aadharNo}</p>}
@@ -2747,9 +3324,11 @@ export const CreateLead: React.FC = () => {
                     rows={2}
                     value={clientModalForm.remarks}
                     onChange={(e) => setClientModalForm({ ...clientModalForm, remarks: e.target.value })}
+                    maxLength={250}
                     placeholder="Key client preferences or relationship notes..."
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold outline-none focus:border-[#33a18a] resize-none"
                   />
+                  {clientModalErrors.remarks && <p className="text-[10px] text-red-500 mt-0.5">{clientModalErrors.remarks}</p>}
                 </div>
               </div>
 
@@ -2781,6 +3360,119 @@ export const CreateLead: React.FC = () => {
                 </button>
               </div>
             </form>
+
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════════
+          CANCEL / UNSAVED PROGRESS CONFIRMATION MODAL (Portal)
+      ═════════════════════════════════════════════════════════════════════════ */}
+      {isCancelModalOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-amber-50/80 dark:bg-amber-950/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                  <FiAlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Unsaved Lead Form Progress
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    You have partially filled lead details that haven't been submitted.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCancelModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <FiX size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 text-xs">
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm">
+                Leaving this page without saving will cause you to lose any entered information. Would you like to <strong>save this as a draft</strong> so you can resume later, or <strong>discard all changes</strong>?
+              </p>
+
+              {/* Current form preview chip */}
+              {(getValues('clientName') || getValues('leadTitle') || selectedClientId) && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-[#33a18a]/10 flex items-center justify-center text-[#33a18a] shrink-0 font-bold text-xs">
+                    LD
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-800 dark:text-white truncate">
+                      {getValues('leadTitle') || 'Untitled Lead Requirement'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      Client: {getValues('clientName') || 'Unassigned'} {getValues('mobile') ? `• ${getValues('mobile')}` : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsCancelModalOpen(false)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  Continue Editing
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCancelModalOpen(false)
+                    navigate('/crm/leads')
+                  }}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all cursor-pointer"
+                >
+                  <FiTrash2 size={13} />
+                  <span>Discard & Exit</span>
+                </button>
+
+                {!isEditMode && (
+                  <button
+                    type="button"
+                    disabled={isSavingDraftOnExit}
+                    onClick={async () => {
+                      setIsSavingDraftOnExit(true)
+                      const saved = await handleSaveDraft(true)
+                      setIsSavingDraftOnExit(false)
+                      if (saved) {
+                        setIsCancelModalOpen(false)
+                        navigate('/crm/leads')
+                      }
+                    }}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-extrabold text-white shadow-md transition-all duration-200 hover:opacity-95 active:scale-95 cursor-pointer disabled:opacity-60"
+                    style={{ background: `linear-gradient(135deg, ${PRIMARY_COLOR} 0%, #288571 100%)` }}
+                  >
+                    {isSavingDraftOnExit ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Saving Draft...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiSave size={13} />
+                        <span>Save as Draft & Exit</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
 
           </div>
         </div>,

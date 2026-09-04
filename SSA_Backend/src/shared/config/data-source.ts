@@ -12,16 +12,31 @@ import { LeadModel } from "../../modules/lead/models/lead.model";
 import { LeadRequirementValueModel } from "../../modules/lead/models/lead-requirement-value.model";
 import { DeliverableTemplateModel } from "../../modules/lead/models/deliverable-template.model";
 import { LeadDeliverableModel } from "../../modules/lead/models/lead-deliverable.model";
+import { ClientModel } from "../../modules/client/models/client.model";
+import {
+  ProjectModel,
+  DisciplineModel,
+  ProjectDisciplineModel,
+  DrawingTypeModel,
+  DrawingModel,
+  DrawingRevisionModel,
+  DrawingFileModel
+} from "../../modules/project";
 
 const globalRef = global as unknown as { AppDataSource: DataSource | undefined };
 
 export const AppDataSource = globalRef.AppDataSource || new DataSource({
   type: "postgres",
-  host: envConfig.database.host,
-  port: envConfig.database.port,
-  username: envConfig.database.username,
-  password: envConfig.database.password,
-  database: envConfig.database.database,
+  ...(envConfig.database.url
+    ? { url: envConfig.database.url }
+    : {
+        host: envConfig.database.host,
+        port: envConfig.database.port,
+        username: envConfig.database.username,
+        password: envConfig.database.password,
+        database: envConfig.database.database,
+      }),
+  ssl: envConfig.database.ssl,
   synchronize: true,
   logging: true,
   entities: [
@@ -30,16 +45,69 @@ export const AppDataSource = globalRef.AppDataSource || new DataSource({
     CompanyModel, 
     EmployeeModel, 
     BranchModel,
+    ClientModel,
     ProjectCategoryModel,
     CategoryTemplateFieldModel,
     LeadModel,
     LeadRequirementValueModel,
     DeliverableTemplateModel,
-    LeadDeliverableModel
+    LeadDeliverableModel,
+    ProjectModel,
+    DisciplineModel,
+    ProjectDisciplineModel,
+    DrawingTypeModel,
+    DrawingModel,
+    DrawingRevisionModel,
+    DrawingFileModel
   ],
   migrations: [],
   subscribers: [],
 });
+
+// Safe getMetadata & getRepository wrapper to handle Next.js / Turbopack HMR class identity changes
+if (!(AppDataSource as any).__safeGetRepositoryPatched) {
+  const origFindMetadata = (AppDataSource as any).findMetadata?.bind(AppDataSource);
+  (AppDataSource as any).findMetadata = function (target: any) {
+    const found = origFindMetadata ? origFindMetadata(target) : undefined;
+    if (found) return found;
+    const targetName = typeof target === 'function' ? target.name : String(target);
+    return AppDataSource.entityMetadatas.find(
+      m => m.name === targetName || m.targetName === targetName || m.tableName === targetName || (typeof m.target === 'function' && m.target.name === targetName)
+    );
+  };
+
+  const origHasMetadata = AppDataSource.hasMetadata.bind(AppDataSource);
+  (AppDataSource as any).hasMetadata = function (target: any) {
+    if (origHasMetadata(target)) return true;
+    return !!(AppDataSource as any).findMetadata(target);
+  };
+
+  const origGetMetadata = AppDataSource.getMetadata.bind(AppDataSource);
+  (AppDataSource as any).getMetadata = function (target: any) {
+    try {
+      return origGetMetadata(target);
+    } catch {
+      const meta = (AppDataSource as any).findMetadata(target);
+      if (meta) return meta;
+      throw new Error(`No metadata for "${typeof target === 'function' ? target.name : target}" was found.`);
+    }
+  };
+
+  const origGetRepository = AppDataSource.getRepository.bind(AppDataSource);
+  (AppDataSource as any).getRepository = function <Entity>(target: any) {
+    try {
+      return origGetRepository(target);
+    } catch (err: any) {
+      const meta = (AppDataSource as any).findMetadata(target);
+      if (meta) {
+        return origGetRepository(meta.target as any);
+      }
+      throw err;
+    }
+  };
+
+  (AppDataSource as any).__safeGetRepositoryPatched = true;
+}
 
 if (process.env.NODE_ENV !== "production") {
   globalRef.AppDataSource = AppDataSource;

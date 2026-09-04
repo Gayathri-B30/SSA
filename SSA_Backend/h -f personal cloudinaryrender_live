@@ -1,0 +1,25 @@
+*   [33m95b238f[m[33m ([m[1;31morigin/render_live[m[33m, [m[1;32mrender_live[m[33m)[m Merge branch 'cloudinary' into render_live
+[31m|[m[32m\[m  
+[31m|[m * [33m24c2722[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mcloudinary[m[33m, [m[1;31morigin/cloudinary[m[33m)[m changed the selection field to text field
+[31m|[m * [33meb335d1[m category managing
+[31m|[m * [33mc2820e4[m cloudinary for storing asset file
+* [32m|[m [33mb2de195[m feat: implement base repository layers for company, employee, lead, user, and branch modules
+* [32m|[m [33m5458bcb[m[33m ([m[1;31mpersonal/render_live[m[33m, [m[1;31mpersonal/HEAD[m[33m)[m fix: use constructor class references in repositories to prevent production minification issues
+* [32m|[m [33m890c2a5[m fix: install devDependencies during build command
+* [32m|[m [33m928116d[m feat: configure backend for render deployment with postgres database
+[32m|[m[32m/[m  
+* [33m1d92416[m[33m ([m[1;31morigin/lead_creation[m[33m, [m[1;32mlead_creation[m[33m)[m ui changes
+* [33m5f4c00a[m field name corrected
+* [33me051432[m lead generation backend
+*   [33m84f9e23[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #2 from SundarSundramArchitects/branch_division_backend
+[33m|[m[34m\[m  
+[33m|[m * [33ma761e83[m[33m ([m[1;31morigin/branch_division_backend[m[33m)[m branch employee
+[33m|[m * [33mef3fa00[m[33m ([m[1;32mbranch_division_backend[m[33m)[m Updated branch and employee modules
+[33m|[m * [33m569545b[m[33m ([m[1;32muser_login[m[33m)[m employee inactive
+[33m|[m * [33m4b65580[m Branch employees
+[33m|[m * [33m8663824[m branch employee backend
+[33m|[m * [33m4b62251[m branches backend
+[33m|[m[33m/[m  
+*   [33m72819df[m Merge pull request #1 from SundarSundramArchitects/backend_Adding_Company
+[35m|[m[36m\[m  
+[35m|[m * [33m2d504d5[m[33m ([m[1;31morigin/backend_Adding_Company[m[33m)[m Add Employee Company Login

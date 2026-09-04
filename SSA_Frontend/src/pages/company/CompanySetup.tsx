@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { initialCompanies, type CompanySetup as CompanyType } from '../../data/mockData'
-import { Plus, Edit2, Trash2, Mail, Phone, Globe, MapPin, Hash, Sparkles } from 'lucide-react'
+import { Plus, Edit2, Trash2, Mail, Phone, Globe, MapPin, Hash, Sparkles, AlertTriangle, CheckCircle2, XCircle, X } from 'lucide-react'
 import api from '../../services/api'
 
 interface CompanySetupProps {
@@ -69,6 +70,18 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false)
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
 
+  // Custom Delete Confirmation & Toast Popups
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'branch' | 'company'; id: string; name: string } | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
+
   const fetchBranches = async () => {
     setLoadingBranches(true)
     setBranchError(null)
@@ -131,15 +144,25 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
     setIsBranchModalOpen(true)
   }
 
-  const deleteBranch = async (id: string) => {
-    if (confirm('Are you sure you want to delete this branch/division?')) {
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm) return
+    if (deleteConfirm.type === 'branch') {
+      setDeleteLoading(true)
       try {
-        await api.delete(`/branches?branchId=${id}`)
-        setBranches(branches.filter((b) => b.id !== id))
+        await api.delete(`/branches?branchId=${deleteConfirm.id}`)
+        setBranches((prev) => prev.filter((b) => b.id !== deleteConfirm.id))
+        setToast({ type: 'success', message: `Branch "${deleteConfirm.name}" deleted successfully!` })
+        setDeleteConfirm(null)
       } catch (err: any) {
         console.error('Failed to delete branch:', err)
-        alert(err.response?.data?.message || 'Failed to delete branch.')
+        setToast({ type: 'error', message: err.response?.data?.message || 'Failed to delete branch.' })
+      } finally {
+        setDeleteLoading(false)
       }
+    } else if (deleteConfirm.type === 'company') {
+      setCompanies((prev) => prev.filter((c) => c.id !== deleteConfirm.id))
+      setToast({ type: 'success', message: `Company entity "${deleteConfirm.name}" deleted successfully!` })
+      setDeleteConfirm(null)
     }
   }
 
@@ -159,6 +182,7 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
           phone: response.data.phone
         }
         setBranches(branches.map((b) => (b.id === editingBranch.id ? updated : b)))
+        setToast({ type: 'success', message: `Branch "${response.data.name}" updated successfully!` })
       } else {
         const response = await api.post('/branches', data)
         const newBranch = {
@@ -170,12 +194,13 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
           phone: response.data.phone
         }
         setBranches([...branches, newBranch])
+        setToast({ type: 'success', message: `Branch "${response.data.name}" created successfully!` })
       }
       setIsBranchModalOpen(false)
       resetBranch()
     } catch (err: any) {
       console.error('Failed to save branch:', err)
-      alert(err.response?.data?.message || 'Failed to save branch/division.')
+      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to save branch/division.' })
     }
   }
 
@@ -215,18 +240,12 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
     setIsModalOpen(true)
   }
 
-  // Delete company handler
-  const deleteCompany = (id: string) => {
-    if (confirm('Are you sure you want to delete this company entity?')) {
-      setCompanies(companies.filter(c => c.id !== id))
-    }
-  }
-
   // Submit Handler
   const onSubmit = (data: CompanyFormInputs) => {
     if (editingCompany) {
       // Edit mode
       setCompanies(companies.map(c => c.id === editingCompany.id ? { ...c, ...data } : c))
+      setToast({ type: 'success', message: `Company "${data.name}" updated successfully!` })
     } else {
       // Create mode
       const newCompany: CompanyType = {
@@ -234,6 +253,7 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
         ...data
       }
       setCompanies([...companies, newCompany])
+      setToast({ type: 'success', message: `Company "${data.name}" registered successfully!` })
     }
     setIsModalOpen(false)
     reset()
@@ -359,7 +379,7 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => deleteCompany(company.id)}
+                    onClick={() => setDeleteConfirm({ type: 'company', id: company.id, name: company.name })}
                     className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-red-600 hover:text-brand-charcoal hover:bg-red-700 hover:border-red-700 transition-all cursor-pointer shadow-sm"
                     title="Delete Entity"
                   >
@@ -443,7 +463,7 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => deleteBranch(branch.id)}
+                          onClick={() => setDeleteConfirm({ type: 'branch', id: branch.id, name: branch.name })}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-50 transition-colors cursor-pointer"
                           title="Delete Branch"
                         >
@@ -872,7 +892,14 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Address <span className="text-red-500">*</span></label>
                 <textarea
                   rows={2}
-                  {...registerBranch('address', { required: 'Address is required' })}
+                  maxLength={250}
+                  {...registerBranch('address', {
+                    required: 'Address is required',
+                    maxLength: {
+                      value: 250,
+                      message: 'Address cannot exceed 250 characters'
+                    }
+                  })}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 outline-none rounded-xl px-4 py-2.5 text-xs text-slate-800 resize-none"
                   placeholder="Floor 3, Brigade Chambers, Indiranagar"
                 />
@@ -905,6 +932,78 @@ export const CompanySetup: React.FC<CompanySetupProps> = ({ defaultTab = 'compan
             </form>
           </div>
         </div>
+      )}
+
+      {/* DELETE CONFIRMATION POPUP MODAL */}
+      {deleteConfirm && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 text-center animate-scale-up">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-400">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+              Delete {deleteConfirm.type === 'branch' ? 'Branch / Division' : 'Company Entity'}?
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Are you sure you want to delete <strong className="text-slate-800 dark:text-slate-200">"{deleteConfirm.name}"</strong>? This action cannot be undone and will remove it permanently.
+            </p>
+
+            <div className="flex items-center justify-center gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={() => setDeleteConfirm(null)}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={handleConfirmDelete}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-md shadow-red-600/20 transition-all cursor-pointer inline-flex items-center gap-2 disabled:opacity-50"
+              >
+                {deleteLoading ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* TOAST NOTIFICATION POPUP */}
+      {toast && createPortal(
+        <div className="fixed bottom-6 right-6 z-50 animate-slide-up">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-xs font-bold ${
+            toast.type === 'success'
+              ? 'bg-emerald-950/90 text-emerald-200 border-emerald-500/40 backdrop-blur-md'
+              : 'bg-red-950/90 text-red-200 border-red-500/40 backdrop-blur-md'
+          }`}>
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+            )}
+            <span className="flex-1">{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )

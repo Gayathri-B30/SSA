@@ -1,29 +1,312 @@
 // Standard Master Drawing List (MDL) catalog and auto-generation engine
 // Based on SSA PMC / Engineering Drawing Delivery Document Specifications
 
-export type DisciplineCode = 'AR' | 'IN' | 'ST' | 'EL' | 'PL' | 'FF' | 'HV' | 'MG' | 'LV' | 'VT' | 'SP'
+export type DisciplineCode =
+  | 'PI'
+  | 'SI'
+  | 'AR'
+  | 'IN'
+  | 'ST'
+  | 'MEP'
+  | 'BQ'
+  | 'TD'
+  | 'CR'
+  | 'SA'
+  | 'TQ'
+  | 'MC'
+  | 'PS'
+  | 'CA'
+  | 'AP'
+  | 'TC'
+  | 'HO'
+  | 'EL'
+  | 'PL'
+  | 'FF'
+  | 'HV'
+  | 'MG'
+  | 'LV'
+  | 'VT'
+  | 'SP'
 
 export interface DisciplineMeta {
   code: DisciplineCode
   name: string
+  folderNumber: number
   sequenceOrder: number
   colorBadge: string
   description: string
+  category: 'Project Control' | 'Design & Engineering' | 'Commercial & Contracts' | 'Site Execution' | 'Quality & Closeout'
+  subfolders?: string[]
 }
 
-export const DISCIPLINE_CATALOG: Record<DisciplineCode, DisciplineMeta> = {
-  AR: { code: 'AR', name: 'Architecture', sequenceOrder: 1, colorBadge: 'bg-rose-500/10 text-rose-400 border-rose-500/20', description: 'Base architectural plans, sections, elevations, schedules' },
-  ST: { code: 'ST', name: 'Structural', sequenceOrder: 2, colorBadge: 'bg-amber-500/10 text-amber-400 border-amber-500/20', description: 'Columns, footings, tie beams, slab rebar, BBS' },
-  EL: { code: 'EL', name: 'Electrical (MEP)', sequenceOrder: 3, colorBadge: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20', description: 'SLD, power, lighting, panel schedules, cable trays, DG/UPS' },
-  PL: { code: 'PL', name: 'Plumbing (MEP)', sequenceOrder: 4, colorBadge: 'bg-blue-500/10 text-blue-400 border-blue-500/20', description: 'Water supply, drainage, storm water, pump room, STP/WTP' },
-  FF: { code: 'FF', name: 'Fire Fighting', sequenceOrder: 5, colorBadge: 'bg-red-500/10 text-red-400 border-red-500/20', description: 'Sprinklers, hydrants, hose reels, fire pumps, static storage' },
-  HV: { code: 'HV', name: 'HVAC', sequenceOrder: 6, colorBadge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20', description: 'Chillers/AHUs, ducts, chilled water, VRF, OT ventilation' },
-  MG: { code: 'MG', name: 'Medical Gas', sequenceOrder: 7, colorBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', description: 'Manifold room, pipeline routing, bed outlets, zone valves' },
-  LV: { code: 'LV', name: 'ELV / Low Voltage', sequenceOrder: 8, colorBadge: 'bg-purple-500/10 text-purple-400 border-purple-500/20', description: 'Structured cabling, CCTV, access control, BMS, nurse call' },
-  VT: { code: 'VT', name: 'Vertical Transport', sequenceOrder: 9, colorBadge: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', description: 'Lift layout, shaft details, machine room, load calcs' },
-  SP: { code: 'SP', name: 'Other Special Services', sequenceOrder: 10, colorBadge: 'bg-teal-500/10 text-teal-400 border-teal-500/20', description: 'Kitchen, laundry, pneumatic tube, solar PV, landscape' },
-  IN: { code: 'IN', name: 'Interior', sequenceOrder: 11, colorBadge: 'bg-pink-500/10 text-pink-400 border-pink-500/20', description: 'Furniture, flooring, RCP ceilings, millwork, FF&E' },
-}
+export const PROJECT_17_FOLDERS: DisciplineMeta[] = [
+  {
+    folderNumber: 1,
+    sequenceOrder: 1,
+    code: 'PI',
+    name: '1.PROJECT INFORMATION',
+    category: 'Project Control',
+    colorBadge: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    description: 'Project brief, client details, project charter, key contacts & directory, milestones',
+    subfolders: [
+      '1. Project Brief & Charter',
+      '2. Client & Stakeholder Directory',
+      '3. Project Team & Org Chart',
+      '4. Consultant Agreements',
+      '5. Scope of Work',
+    ],
+  },
+  {
+    folderNumber: 2,
+    sequenceOrder: 2,
+    code: 'SI',
+    name: '2.SITE INFORMATION',
+    category: 'Project Control',
+    colorBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    description: 'Survey drawings, soil investigation reports, site topography, boundary data, site photos',
+    subfolders: [
+      '1. Topographical & Contour Survey',
+      '2. Geotechnical & Soil Test Reports',
+      '3. Boundary Demarcation & Coordinates',
+      '4. Site Photos & Drone Footage',
+      '5. Existing Utilities & Surroundings',
+    ],
+  },
+  {
+    folderNumber: 3,
+    sequenceOrder: 3,
+    code: 'AR',
+    name: '3.ARCHITECTURAL DRAWINGS',
+    category: 'Design & Engineering',
+    colorBadge: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+    description: 'Scheme drawings, preliminary designs, working plans, elevations, sections, joinery & detailed drawing packages',
+    subfolders: [],
+  },
+  {
+    folderNumber: 4,
+    sequenceOrder: 4,
+    code: 'IN',
+    name: '4.INTERIOR',
+    category: 'Design & Engineering',
+    colorBadge: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+    description: 'Furniture layouts, false ceiling (RCP), flooring layouts, millwork & joinery, FF&E schedules',
+    subfolders: [],
+  },
+  {
+    folderNumber: 5,
+    sequenceOrder: 5,
+    code: 'ST',
+    name: '5.STRUCTURAL',
+    category: 'Design & Engineering',
+    colorBadge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    description: 'Foundation drawings, column layouts & schedules, slab & beam reinforcement, BBS, structural notes',
+    subfolders: [],
+  },
+  {
+    folderNumber: 6,
+    sequenceOrder: 6,
+    code: 'MEP',
+    name: '6.MEP & OTHER SERVICE DRAWINGS',
+    category: 'Design & Engineering',
+    colorBadge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+    description: 'Electrical, Plumbing, Fire Fighting, HVAC, Medical Gas, ELV, Vertical Transport & Special Services',
+    subfolders: [],
+  },
+  {
+    folderNumber: 7,
+    sequenceOrder: 7,
+    code: 'BQ',
+    name: '7.BOQ & ESTIMATION',
+    category: 'Commercial & Contracts',
+    colorBadge: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    description: 'Bill of quantities, package-wise cost estimates, rate analysis, material quantity takeoffs',
+    subfolders: [
+      '1. Package-wise BOQs (Civil, MEP, Interior)',
+      '2. Cost Estimates & Budgets',
+      '3. Rate Analysis & Market Quotations',
+      '4. Material Quantity Takeoffs (MTO)',
+      '5. Reconciliation Statements',
+    ],
+  },
+  {
+    folderNumber: 8,
+    sequenceOrder: 8,
+    code: 'TD',
+    name: '8.TENDER DOCUMENTS',
+    category: 'Commercial & Contracts',
+    colorBadge: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    description: 'Notice Inviting Tender (NIT), conditions of contract, technical specifications, tender drawings',
+    subfolders: [
+      '1. Notice Inviting Tender (NIT)',
+      '2. Conditions of Contract (GCC & SCC)',
+      '3. Technical Specifications & Makes',
+      '4. Tender Addenda & Pre-bid Clarifications',
+      '5. Bid Submissions & Comparative Statements',
+      '6. Letter of Intent (LOI) & Work Orders',
+    ],
+  },
+  {
+    folderNumber: 9,
+    sequenceOrder: 9,
+    code: 'CR',
+    name: '9.CONSTRUCTION REPORTS',
+    category: 'Site Execution',
+    colorBadge: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+    description: 'Daily Progress Reports (DPR), weekly & monthly reports, QA/QC checklists, site logs',
+    subfolders: [
+      '1. Daily Progress Reports (DPR)',
+      '2. Weekly Progress Reports (WPR)',
+      '3. Monthly Progress Reports (MPR)',
+      '4. QA & QC Inspection Reports & Pour Cards',
+      '5. Site Progress Photographs & Videos',
+      '6. Safety & HSE Incident Logs',
+    ],
+  },
+  {
+    folderNumber: 10,
+    sequenceOrder: 10,
+    code: 'SA',
+    name: '10.SUBMITTAL APPROVALS',
+    category: 'Site Execution',
+    colorBadge: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+    description: 'Material submittals, compliance sheets, sample approvals, shop drawings, mock-up sign-offs',
+    subfolders: [
+      '1. Material Approval Requests (MAR)',
+      '2. Manufacturer Test Certificates & Catalogs',
+      '3. Sample Submissions & Physical Approvals',
+      '4. Contractor Shop Drawings',
+      '5. Mock-up Inspections & Sign-offs',
+    ],
+  },
+  {
+    folderNumber: 11,
+    sequenceOrder: 11,
+    code: 'TQ',
+    name: '11.TECHINICAL QUERIES',
+    category: 'Site Execution',
+    colorBadge: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+    description: 'Requests for Information (RFIs), consultant design clarifications, Site Instructions (SI)',
+    subfolders: [
+      '1. Request for Information (RFI Log)',
+      '2. Consultant Clarifications & Sketches',
+      '3. Site Instructions (SI)',
+      '4. Technical Deviation Reports',
+    ],
+  },
+  {
+    folderNumber: 12,
+    sequenceOrder: 12,
+    code: 'MC',
+    name: '12.MEETING CORRESPONDANCE',
+    category: 'Project Control',
+    colorBadge: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+    description: 'Minutes of Meetings (MOM), client letters, contractor notices, correspondence & memos',
+    subfolders: [
+      '1. Client Coordination Meetings (MOM)',
+      '2. Consultant Review Meetings (MOM)',
+      '3. Contractor Progress Review Meetings (MOM)',
+      '4. Letters to Client',
+      '5. Letters to Contractors & Notices',
+      '6. Letters from Consultants',
+    ],
+  },
+  {
+    folderNumber: 13,
+    sequenceOrder: 13,
+    code: 'PS',
+    name: '13.PROJECT SCHEDULE',
+    category: 'Project Control',
+    colorBadge: 'bg-amber-600/10 text-amber-500 border-amber-600/20',
+    description: 'Master baseline schedule, look-ahead programs, milestone tracking, delay analysis',
+    subfolders: [
+      '1. Master Baseline Schedule (Primavera / MSP)',
+      '2. Monthly Target Schedules',
+      '3. 3-Week / Look-Ahead Schedules',
+      '4. Critical Path & Delay Analysis (EOT)',
+      '5. Milestone Trackers',
+    ],
+  },
+  {
+    folderNumber: 14,
+    sequenceOrder: 14,
+    code: 'CA',
+    name: '14.COST ACCOUNTS',
+    category: 'Commercial & Contracts',
+    colorBadge: 'bg-green-600/10 text-green-500 border-green-600/20',
+    description: 'Contractor Running Account (RA) bills, Payment Certificates (IPC), variation orders, extra items',
+    subfolders: [
+      '1. Contractor RA Bills & Measurements',
+      '2. Payment Recommendation Certificates (IPC)',
+      '3. Variation Orders & Extra Items (VO)',
+      '4. Price Escalation & Secured Advances',
+      '5. Cash Flow Forecasts & Spend Curves',
+    ],
+  },
+  {
+    folderNumber: 15,
+    sequenceOrder: 15,
+    code: 'AP',
+    name: '15.STATUTORY APPROVALS',
+    category: 'Project Control',
+    colorBadge: 'bg-red-500/10 text-red-400 border-red-500/20',
+    description: 'Building sanction plans, Fire NOC, Environmental Clearance, utility approvals & occupancy certificate',
+    subfolders: [
+      '1. Planning Permission & Building Sanction',
+      '2. Fire Department NOC (Provisional & Final)',
+      '3. Environmental Clearance (PCB / SEIAA)',
+      '4. Utility Approvals (Power / Water / Sewerage)',
+      '5. Airport Authority & Heritage NOCs',
+      '6. Completion & Occupancy Certificate (CC/OC)',
+    ],
+  },
+  {
+    folderNumber: 16,
+    sequenceOrder: 16,
+    code: 'TC',
+    name: '16.TESTING & COMMISIONING',
+    category: 'Quality & Closeout',
+    colorBadge: 'bg-purple-600/10 text-purple-400 border-purple-600/20',
+    description: 'Pre-commissioning checklists, pressure & hydro test certificates, MEP balancing, snag list tracking',
+    subfolders: [
+      '1. Testing & Commissioning Plan & Method Statements',
+      '2. Hydrostatic & Pressure Test Certificates',
+      '3. MEP Equipment Performance Logs',
+      '4. Integrated System Testing (IST) Reports',
+      '5. Pre-handover Snag Lists & De-snagging',
+    ],
+  },
+  {
+    folderNumber: 17,
+    sequenceOrder: 17,
+    code: 'HO',
+    name: '17.HANDOVER',
+    category: 'Quality & Closeout',
+    colorBadge: 'bg-emerald-600/10 text-emerald-400 border-emerald-600/20',
+    description: 'As-built drawing packages, O&M manuals, warranty certificates, asset registers & completion handover',
+    subfolders: [
+      '1. Final As-Built Drawings (Civil & MEP)',
+      '2. Operation & Maintenance (O&M) Manuals',
+      '3. Equipment Warranties & Guarantees',
+      '4. Asset Register & Spares Handover',
+      '5. Key Handover & Area Takeover Protocol',
+      '6. Final Completion & Release Certificates',
+    ],
+  },
+  // Sub-engineering disciplines under MEP
+  { folderNumber: 6, sequenceOrder: 18, code: 'EL', name: 'Electrical (MEP)', category: 'Design & Engineering', colorBadge: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20', description: 'SLD, power, lighting, panel schedules, cable trays, DG/UPS' },
+  { folderNumber: 6, sequenceOrder: 19, code: 'PL', name: 'Plumbing (MEP)', category: 'Design & Engineering', colorBadge: 'bg-blue-500/10 text-blue-400 border-blue-500/20', description: 'Water supply, drainage, storm water, pump room, STP/WTP' },
+  { folderNumber: 6, sequenceOrder: 20, code: 'FF', name: 'Fire Fighting (MEP)', category: 'Design & Engineering', colorBadge: 'bg-red-500/10 text-red-400 border-red-500/20', description: 'Sprinklers, hydrants, hose reels, fire pumps, static storage' },
+  { folderNumber: 6, sequenceOrder: 21, code: 'HV', name: 'HVAC (MEP)', category: 'Design & Engineering', colorBadge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20', description: 'Chillers/AHUs, ducts, chilled water, VRF, OT ventilation' },
+  { folderNumber: 6, sequenceOrder: 22, code: 'MG', name: 'Medical Gas (MEP)', category: 'Design & Engineering', colorBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', description: 'Manifold room, pipeline routing, bed outlets, zone valves' },
+  { folderNumber: 6, sequenceOrder: 23, code: 'LV', name: 'ELV / Low Voltage (MEP)', category: 'Design & Engineering', colorBadge: 'bg-purple-500/10 text-purple-400 border-purple-500/20', description: 'Structured cabling, CCTV, access control, BMS, nurse call' },
+  { folderNumber: 6, sequenceOrder: 24, code: 'VT', name: 'Vertical Transport (MEP)', category: 'Design & Engineering', colorBadge: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', description: 'Lift layout, shaft details, machine room, load calcs' },
+  { folderNumber: 6, sequenceOrder: 25, code: 'SP', name: 'Other Special Services (MEP)', category: 'Design & Engineering', colorBadge: 'bg-teal-500/10 text-teal-400 border-teal-500/20', description: 'Kitchen, laundry, pneumatic tube, solar PV, landscape' },
+]
+
+export const DISCIPLINE_CATALOG: Record<DisciplineCode, DisciplineMeta> = PROJECT_17_FOLDERS.reduce((acc, curr) => {
+  acc[curr.code] = curr
+  return acc
+}, {} as Record<DisciplineCode, DisciplineMeta>)
 
 export interface DrawingTemplateItem {
   id: string

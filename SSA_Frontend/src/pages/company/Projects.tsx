@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, Calendar, DollarSign, MapPin, Scale, Layers } from 'lucide-react'
+import { Plus, Calendar, DollarSign, MapPin, Scale, Layers, Trash2, AlertTriangle, CheckCircle2, XCircle, X } from 'lucide-react'
 import api from '../../services/api'
 import { ProjectDrawingWorkspace } from './projects/ProjectDrawingWorkspace'
 import type { Project } from '../../data/mockData'
@@ -38,6 +39,17 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedWorkspaceProjectId, setSelectedWorkspaceProjectId] = useState<string | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
+
+  // Custom Delete Confirmation & Toast Popups
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
 
   const fetchProjects = async () => {
     const stored = JSON.parse(localStorage.getItem('ssa_projects') || '[]')
@@ -137,10 +149,17 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
   }
 
   // Delete project
-  const deleteProject = (id: string) => {
-    if (confirm('Are you sure you want to delete this project?')) {
-      setProjects(projects.filter(p => p.id !== id))
-    }
+  const deleteProject = (id: string, name: string) => {
+    setDeleteConfirm({ id, name })
+  }
+
+  const handleConfirmDelete = () => {
+    if (!deleteConfirm) return
+    setProjects(prev => prev.filter(p => p.id !== deleteConfirm.id))
+    const stored = JSON.parse(localStorage.getItem('ssa_projects') || '[]')
+    localStorage.setItem('ssa_projects', JSON.stringify(stored.filter((p: any) => p.id !== deleteConfirm.id)))
+    setToast({ type: 'success', message: `Project "${deleteConfirm.name}" deleted successfully.` })
+    setDeleteConfirm(null)
   }
 
   // Stage indicator badge styling
@@ -270,8 +289,8 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
                     <Layers className="w-3.5 h-3.5" /> View Drawing Workspace & MDL
                   </button>
                   <button
-                    onClick={() => deleteProject(prj.id)}
-                    className="text-[10px] text-red-400 hover:text-red-300 font-semibold"
+                    onClick={() => deleteProject(prj.id, prj.projectName)}
+                    className="text-[10px] text-red-500 hover:text-red-700 font-semibold cursor-pointer"
                   >
                     Delete Project
                   </button>
@@ -498,6 +517,66 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
             </form>
           </div>
         </div>
+      )}
+      {/* DELETE CONFIRMATION POPUP MODAL */}
+      {deleteConfirm && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 text-center animate-scale-up">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-400">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+              Delete Project?
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Are you sure you want to delete <strong className="text-slate-800 dark:text-slate-200">"{deleteConfirm.name}"</strong>? This action cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-center gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-md shadow-red-600/20 transition-all cursor-pointer inline-flex items-center gap-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* TOAST NOTIFICATION POPUP */}
+      {toast && createPortal(
+        <div className="fixed bottom-6 right-6 z-50 animate-slide-up">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-xs font-bold ${
+            toast.type === 'success'
+              ? 'bg-emerald-950/90 text-emerald-200 border-emerald-500/40 backdrop-blur-md'
+              : 'bg-red-950/90 text-red-200 border-red-500/40 backdrop-blur-md'
+          }`}>
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+            )}
+            <span className="flex-1">{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )

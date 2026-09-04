@@ -6,6 +6,7 @@ import { ProjectCategoryModel } from '../../modules/lead/models/project-category
 import { CategoryTemplateFieldModel } from '../../modules/lead/models/category-template-field.model';
 import { DeliverableTemplateModel } from '../../modules/lead/models/deliverable-template.model';
 import { LeadDeliverableModel } from '../../modules/lead/models/lead-deliverable.model';
+import { ClientModel } from '../../modules/client/models/client.model';
 import { IsNull } from 'typeorm';
 
 async function seedLeadTemplates(ds: any) {
@@ -535,6 +536,31 @@ async function main() {
     
     // Seed templates, fields, and deliverables
     await seedLeadTemplates(ds);
+
+    // Seed Initial Clients
+    const clientRepo = ds.getRepository(ClientModel);
+    const clientCount = await clientRepo.count();
+    if (clientCount === 0) {
+      console.log('[Seed] Seeding initial clients...');
+      const defaultClients = [
+        { clientCode: 'CL-2026-001', clientName: 'Gokul Ramakrishnan', company: 'GR Prestige Projects', mobile: '9962012001', email: 'gokul@grprestige.in', address: '14/2 GST Road, Guindy', city: 'Chennai', state: 'Tamil Nadu', country: 'India', clientType: 'Corporate', status: 'Active', companyId: 'CMP-2026-001' },
+        { clientCode: 'CL-2026-002', clientName: 'Dr. Archana Sen', company: 'Fortis Health City Hub', mobile: '9840066881', email: 'asen@fortis.com', address: 'Plot 45 Bannerghatta Main Road', city: 'Bangalore', state: 'Karnataka', country: 'India', clientType: 'Institutional', status: 'Active', companyId: 'CMP-2026-001' },
+        { clientCode: 'CL-2026-003', clientName: 'Kapil Aggarwal', company: 'Nexus Warehousing', mobile: '9500088220', email: 'kapil@nexuswarehouses.com', address: 'Sector 18 Cyber City', city: 'Gurugram', state: 'Haryana', country: 'India', clientType: 'Commercial', status: 'Active', companyId: 'CMP-2026-001' },
+        { clientCode: 'CL-2026-004', clientName: 'Farhan Akhtar', company: 'Zoya Creative Studios', mobile: '9884099882', email: 'farhan@zoyacreative.com', address: '88 Bandra Reclamation', city: 'Mumbai', state: 'Maharashtra', country: 'India', clientType: 'Corporate', status: 'Active', companyId: 'CMP-2026-001' },
+      ];
+      for (const c of defaultClients) {
+        const entity = clientRepo.create(c);
+        await clientRepo.save(entity);
+      }
+      console.log('[Seed] Seeded initial clients successfully.');
+    }
+
+    // Seed Disciplines & Drawing Types Master
+    const { ProjectService } = require('../../modules/project/services/project.service');
+    const projectService = new ProjectService();
+    await projectService.seedMasterData();
+    console.log('[DB-Init] Seeding Disciplines & Drawing Types Master complete.');
+
     console.log('[DB-Init] Database initialization complete.');
     
     process.exit(0);
