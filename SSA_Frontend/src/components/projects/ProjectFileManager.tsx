@@ -25,18 +25,14 @@ import {
   RefreshCw,
   HardDrive,
   Layers,
-  Check,
   Grid,
   List,
-  Copy,
-  ExternalLink,
 } from 'lucide-react';
 import api from '../../services/api';
 import {
   type ProjectFolderItem,
   type ProjectFileItem,
   generateLocalHierarchy,
-  STANDARD_PROJECT_FOLDER_TEMPLATE,
 } from '../../data/projectFolderTemplate';
 
 interface ProjectFileManagerProps {
