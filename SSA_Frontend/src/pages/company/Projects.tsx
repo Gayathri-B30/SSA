@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, Calendar, DollarSign, MapPin, Scale, Layers, Trash2, AlertTriangle, CheckCircle2, XCircle, X } from 'lucide-react'
+import { Plus, Calendar, DollarSign, MapPin, Scale, Layers, Trash2, AlertTriangle, CheckCircle2, XCircle, X, Folder, FolderPlus, Sparkles } from 'lucide-react'
 import api from '../../services/api'
 import { ProjectDrawingWorkspace } from './projects/ProjectDrawingWorkspace'
+import { ProjectFileManager } from '../../components/projects/ProjectFileManager'
+import { generateLocalHierarchy } from '../../data/projectFolderTemplate'
 import type { Project } from '../../data/mockData'
 
 interface ProjectsProps {
@@ -33,11 +35,13 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
   useEffect(() => {
     setActiveTab(defaultTab)
     setSelectedWorkspaceProjectId(null)
+    setSelectedFileManagerProject(null)
     fetchProjects()
   }, [defaultTab, location.pathname, location.key, (location.state as any)?.refreshKey])
 
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedWorkspaceProjectId, setSelectedWorkspaceProjectId] = useState<string | null>(null)
+  const [selectedFileManagerProject, setSelectedFileManagerProject] = useState<Project | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
 
   // Custom Delete Confirmation & Toast Popups
@@ -133,17 +137,52 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ProjectFormInputs>()
 
   // Form Submit
-  const onSubmit = (data: ProjectFormInputs) => {
+  const onSubmit = async (data: ProjectFormInputs) => {
+    const newId = `PRJ-${Math.floor(100 + Math.random() * 900)}`
     const newP: Project = {
-      id: `PRJ-${Math.floor(100 + Math.random() * 900)}`,
+      id: newId,
       ...data,
       budget: Number(data.budget),
       progress: Number(data.progress),
     }
-    const updated = [...projects, newP]
+
+    // 1. Try to create on backend (triggers automated folder generation in DB)
+    try {
+      const res = await api.post('/projects', {
+        projectName: data.projectName,
+        projectPrefix: data.projectCode?.split('-')[0] || 'PRJ',
+        clientName: data.client,
+        projectType: data.projectType,
+        startDate: data.timeline?.split(' - ')[0] || '',
+        completionDate: data.timeline?.split(' - ')[1] || '',
+      })
+
+      if (res.data?.success && res.data.data) {
+        const created = res.data.data
+        newP.id = created.id || newId
+        newP.projectCode = created.projectCode || data.projectCode
+      }
+    } catch (err) {
+      console.warn('[Projects] Backend project creation fallback to localStorage:', err)
+    }
+
+    // 2. Generate and cache local hierarchy for offline/local resilience
+    const localHierarchy = generateLocalHierarchy(newP.id, newP.projectName)
+    localStorage.setItem(`ssa_project_folders_${newP.id}`, JSON.stringify(localHierarchy))
+    if (newP.projectCode && newP.projectCode !== newP.id) {
+      localStorage.setItem(`ssa_project_folders_${newP.projectCode}`, JSON.stringify(localHierarchy))
+    }
+
+    // 3. Update local state
+    const updated = [newP, ...projects]
     setProjects(updated)
     const stored = JSON.parse(localStorage.getItem('ssa_projects') || '[]')
-    localStorage.setItem('ssa_projects', JSON.stringify([...stored, newP]))
+    localStorage.setItem('ssa_projects', JSON.stringify([newP, ...stored]))
+    
+    setToast({
+      type: 'success',
+      message: `Project "${newP.projectName}" created with standard 17-folder hierarchy!`
+    })
     setIsAddOpen(false)
     reset()
   }
@@ -174,6 +213,18 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
       case 'As Built': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
       default: return 'bg-slate-800 text-brand-gray'
     }
+  }
+
+  if (selectedFileManagerProject) {
+    return (
+      <ProjectFileManager
+        projectId={selectedFileManagerProject.id}
+        projectCode={selectedFileManagerProject.projectCode}
+        projectName={selectedFileManagerProject.projectName}
+        clientName={selectedFileManagerProject.client}
+        onBack={() => setSelectedFileManagerProject(null)}
+      />
+    )
   }
 
   if (selectedWorkspaceProjectId) {
@@ -281,18 +332,27 @@ export const Projects: React.FC<ProjectsProps> = ({ defaultTab = 'projects' }) =
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-between items-center pt-2">
-                  <button
-                    onClick={() => setSelectedWorkspaceProjectId(prj.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-extrabold transition-all cursor-pointer"
-                  >
-                    <Layers className="w-3.5 h-3.5" /> View Drawing Workspace & MDL
-                  </button>
+                <div className="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => setSelectedFileManagerProject(prj)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary border border-brand-primary/20 text-[11px] font-extrabold transition-all cursor-pointer shadow-xs"
+                      title="Explore 17 Standard Folders & Files"
+                    >
+                      <Folder className="w-3.5 h-3.5" /> 17 Standard Folders & Files
+                    </button>
+                    <button
+                      onClick={() => setSelectedWorkspaceProjectId(prj.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-extrabold transition-all cursor-pointer"
+                    >
+                      <Layers className="w-3.5 h-3.5" /> Drawings & MDL
+                    </button>
+                  </div>
                   <button
                     onClick={() => deleteProject(prj.id, prj.projectName)}
-                    className="text-[10px] text-red-500 hover:text-red-700 font-semibold cursor-pointer"
+                    className="text-[10px] text-red-500 hover:text-red-700 font-semibold cursor-pointer px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20"
                   >
-                    Delete Project
+                    Delete
                   </button>
                 </div>
               </div>

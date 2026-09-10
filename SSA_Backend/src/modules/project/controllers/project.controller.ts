@@ -148,4 +148,141 @@ export class ProjectController {
       return NextResponse.json({ success: false, message: err.message }, { status: 500 });
     }
   }
+
+  // --- FOLDERS CONTROLLER METHODS ---
+  async getProjectFolders(req: NextRequest, projectId: string, user: any) {
+    try {
+      const result = await this.projectService.getProjectFolders(projectId);
+      return NextResponse.json({ success: true, data: result.folders, project: result.project });
+    } catch (err: any) {
+      console.error('[ProjectController] getProjectFolders error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  async createFolder(req: NextRequest, projectId: string, user: any) {
+    try {
+      const body = await req.json();
+      if (!body.name) {
+        return NextResponse.json({ success: false, message: 'Folder name is required.' }, { status: 400 });
+      }
+      const folder = await this.projectService.createFolder({
+        projectId,
+        parentFolderId: body.parentFolderId || null,
+        name: body.name,
+        folderType: body.folderType || 'CUSTOM',
+        createdBy: user?.name || user?.email || 'User'
+      });
+      return NextResponse.json({ success: true, data: folder });
+    } catch (err: any) {
+      console.error('[ProjectController] createFolder error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  async renameFolder(req: NextRequest, folderId: string, user: any) {
+    try {
+      const body = await req.json();
+      if (!body.name) {
+        return NextResponse.json({ success: false, message: 'New folder name is required.' }, { status: 400 });
+      }
+      const updated = await this.projectService.renameFolder(folderId, body.name);
+      return NextResponse.json({ success: true, data: updated });
+    } catch (err: any) {
+      console.error('[ProjectController] renameFolder error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  async deleteFolder(req: NextRequest, folderId: string, user: any) {
+    try {
+      const ok = await this.projectService.deleteFolder(folderId);
+      if (!ok) {
+        return NextResponse.json({ success: false, message: 'Folder not found.' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, message: 'Folder deleted successfully.' });
+    } catch (err: any) {
+      console.error('[ProjectController] deleteFolder error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  async initProjectFolderHierarchy(req: NextRequest, projectId: string, user: any) {
+    try {
+      const folders = await this.projectService.initProjectFolderHierarchy(
+        projectId,
+        user?.name || user?.email || 'System'
+      );
+      return NextResponse.json({ success: true, data: folders });
+    } catch (err: any) {
+      console.error('[ProjectController] initProjectFolderHierarchy error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  // --- PROJECT FILES CONTROLLER METHODS ---
+  async getProjectFiles(req: NextRequest, projectId: string, user: any) {
+    try {
+      const { searchParams } = new URL(req.url);
+      const folderId = searchParams.get('folderId') || undefined;
+      const files = await this.projectService.getProjectFiles(projectId, folderId);
+      return NextResponse.json({ success: true, data: files });
+    } catch (err: any) {
+      console.error('[ProjectController] getProjectFiles error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  async createProjectFile(req: NextRequest, projectId: string, user: any) {
+    try {
+      const body = await req.json();
+      if (!body.folderId || !body.fileName || !body.filePath) {
+        return NextResponse.json({
+          success: false,
+          message: 'folderId, fileName, and filePath are required.'
+        }, { status: 400 });
+      }
+      const file = await this.projectService.createProjectFile({
+        projectId,
+        folderId: body.folderId,
+        fileName: body.fileName,
+        filePath: body.filePath,
+        fileType: body.fileType,
+        fileSize: body.fileSize,
+        uploadedBy: user?.name || user?.email || 'User'
+      });
+      return NextResponse.json({ success: true, data: file });
+    } catch (err: any) {
+      console.error('[ProjectController] createProjectFile error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  async renameProjectFile(req: NextRequest, fileId: string, user: any) {
+    try {
+      const body = await req.json();
+      if (!body.fileName) {
+        return NextResponse.json({ success: false, message: 'fileName is required.' }, { status: 400 });
+      }
+      const updated = await this.projectService.renameProjectFile(fileId, body.fileName);
+      return NextResponse.json({ success: true, data: updated });
+    } catch (err: any) {
+      console.error('[ProjectController] renameProjectFile error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
+
+  async deleteProjectFile(req: NextRequest, fileId: string, user: any) {
+    try {
+      const ok = await this.projectService.deleteProjectFile(fileId);
+      if (!ok) {
+        return NextResponse.json({ success: false, message: 'File not found.' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, message: 'File deleted successfully.' });
+    } catch (err: any) {
+      console.error('[ProjectController] deleteProjectFile error:', err);
+      return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    }
+  }
 }
+

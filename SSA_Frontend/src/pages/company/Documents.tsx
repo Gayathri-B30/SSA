@@ -427,7 +427,11 @@ export const Documents: React.FC<DocumentsProps> = ({ defaultTab = 'drawings' })
               <Download className="w-4 h-4" /> Export CSV
             </button>
             <button
-              onClick={() => setIsAddFolderModalOpen(true)}
+              onClick={() => {
+                const uncreated = (Object.keys(DISCIPLINE_CATALOG) as DisciplineCode[]).find(c => !availableDisciplines.includes(c)) || 'ST'
+                setNewFolderDiscCode(uncreated)
+                setIsAddFolderModalOpen(true)
+              }}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-all duration-200 cursor-pointer animate-fade-in"
             >
               <FolderPlus className="w-4 h-4" /> Add Folder

@@ -7,7 +7,9 @@ import {
   DrawingTypeModel,
   DrawingModel,
   DrawingRevisionModel,
-  DrawingFileModel
+  DrawingFileModel,
+  FolderModel,
+  ProjectFileModel
 } from '../models';
 
 export class ProjectRepository {
@@ -37,6 +39,14 @@ export class ProjectRepository {
 
   private drawingFileRepo(): Repository<DrawingFileModel> {
     return AppDataSource.getRepository(DrawingFileModel);
+  }
+
+  private folderRepo(): Repository<FolderModel> {
+    return AppDataSource.getRepository(FolderModel);
+  }
+
+  private projectFileRepo(): Repository<ProjectFileModel> {
+    return AppDataSource.getRepository(ProjectFileModel);
   }
 
   // --- PROJECTS ---
@@ -79,23 +89,23 @@ export class ProjectRepository {
     if (existing.length > 0) return existing;
 
     const defaultDisciplines = [
-      { code: 'PI', name: '1.PROJECT INFORMATION', sequenceOrder: 1, description: 'Project brief, client details, charter, key contacts, milestones' },
-      { code: 'SI', name: '2.SITE INFORMATION', sequenceOrder: 2, description: 'Survey drawings, soil test reports, site photos, boundary & contour data' },
-      { code: 'AR', name: '3.ARCHITECTURAL DRAWINGS', sequenceOrder: 3, description: 'Base architectural plans, sections, elevations, schedules, scheme & working drawings' },
-      { code: 'IN', name: '4.INTERIOR', sequenceOrder: 4, description: 'Furniture layouts, flooring, RCP ceilings, millwork, FF&E schedules' },
-      { code: 'ST', name: '5.STRUCTURAL', sequenceOrder: 5, description: 'Columns, footings, tie beams, slab rebar, BBS, structural notes' },
-      { code: 'MEP', name: '6.MEP & OTHER SERVICE DRAWINGS', sequenceOrder: 6, description: 'Combined MEP & Services (Electrical, Plumbing, Fire Fighting, HVAC, ELV, Gas, Transport)' },
-      { code: 'BQ', name: '7.BOQ & ESTIMATION', sequenceOrder: 7, description: 'Bill of quantities, cost estimates, rate analysis, material quantity takeoffs' },
-      { code: 'TD', name: '8.TENDER DOCUMENTS', sequenceOrder: 8, description: 'NIT, tender drawings, conditions of contract, specifications, addenda' },
-      { code: 'CR', name: '9.CONSTRUCTION REPORTS', sequenceOrder: 9, description: 'Daily Progress Reports (DPR), weekly/monthly reports, QA/QC checklists, site logs' },
-      { code: 'SA', name: '10.SUBMITTAL APPROVALS', sequenceOrder: 10, description: 'Material submittals, technical data sheets, sample approvals, shop drawings' },
-      { code: 'TQ', name: '11.TECHINICAL QUERIES', sequenceOrder: 11, description: 'Technical Queries (RFIs), consultant clarifications & site instructions' },
-      { code: 'MC', name: '12.MEETING CORRESPONDANCE', sequenceOrder: 12, description: 'Minutes of Meetings (MOM), client/consultant letters, official correspondence' },
-      { code: 'PS', name: '13.PROJECT SCHEDULE', sequenceOrder: 13, description: 'Master baseline schedule, look-ahead plans, milestone tracking, delay analysis' },
-      { code: 'CA', name: '14.COST ACCOUNTS', sequenceOrder: 14, description: 'RA bills, contractor payment certificates, variations, extra item claims, cashflows' },
-      { code: 'AP', name: '15.STATUTORY APPROVALS', sequenceOrder: 15, description: 'Building sanctions, fire NOC, environmental clearance, local authority permits' },
-      { code: 'TC', name: '16.TESTING & COMMISIONING', sequenceOrder: 16, description: 'Pre-commissioning checklists, hydro testing, MEP test reports, snag lists' },
-      { code: 'HO', name: '17.HANDOVER', sequenceOrder: 17, description: 'As-built drawings, O&M manuals, warranty certificates, completion certificates' },
+      { code: 'PI', name: 'PROJECT INFORMATION', sequenceOrder: 1, description: 'Project brief, client details, charter, key contacts, milestones' },
+      { code: 'SI', name: 'SITE INFORMATION', sequenceOrder: 2, description: 'Survey drawings, soil test reports, site photos, boundary & contour data' },
+      { code: 'AR', name: 'ARCHITECTURAL DRAWINGS', sequenceOrder: 3, description: 'Base architectural plans, sections, elevations, schedules, scheme & working drawings' },
+      { code: 'IN', name: 'INTERIOR', sequenceOrder: 4, description: 'Furniture layouts, flooring, RCP ceilings, millwork, FF&E schedules' },
+      { code: 'ST', name: 'STRUCTURAL', sequenceOrder: 5, description: 'Columns, footings, tie beams, slab rebar, BBS, structural notes' },
+      { code: 'MEP', name: 'MEP & OTHER SERVICE DRAWINGS', sequenceOrder: 6, description: 'Combined MEP & Services (Electrical, Plumbing, Fire Fighting, HVAC, ELV, Gas, Transport)' },
+      { code: 'BQ', name: 'BOQ & ESTIMATION', sequenceOrder: 7, description: 'Bill of quantities, cost estimates, rate analysis, material quantity takeoffs' },
+      { code: 'TD', name: 'TENDER DOCUMENTS', sequenceOrder: 8, description: 'NIT, tender drawings, conditions of contract, specifications, addenda' },
+      { code: 'CR', name: 'CONSTRUCTION REPORTS', sequenceOrder: 9, description: 'Daily Progress Reports (DPR), weekly/monthly reports, QA/QC checklists, site logs' },
+      { code: 'SA', name: 'SUBMITTAL APPROVALS', sequenceOrder: 10, description: 'Material submittals, technical data sheets, sample approvals, shop drawings' },
+      { code: 'TQ', name: 'TECHNICAL QUERIES', sequenceOrder: 11, description: 'Technical Queries (RFIs), consultant clarifications & site instructions' },
+      { code: 'MC', name: 'MEETING CORRESPONDENCE', sequenceOrder: 12, description: 'Minutes of Meetings (MOM), client/consultant letters, official correspondence' },
+      { code: 'PS', name: 'PROJECT SCHEDULE', sequenceOrder: 13, description: 'Master baseline schedule, look-ahead plans, milestone tracking, delay analysis' },
+      { code: 'CA', name: 'COST ACCOUNTS', sequenceOrder: 14, description: 'RA bills, contractor payment certificates, variations, extra item claims, cashflows' },
+      { code: 'AP', name: 'STATUTORY APPROVALS', sequenceOrder: 15, description: 'Building sanctions, fire NOC, environmental clearance, local authority permits' },
+      { code: 'TC', name: 'TESTING & COMMISSIONING', sequenceOrder: 16, description: 'Pre-commissioning checklists, hydro testing, MEP test reports, snag lists' },
+      { code: 'HO', name: 'HANDOVER', sequenceOrder: 17, description: 'As-built drawings, O&M manuals, warranty certificates, completion certificates' },
       // Sub-Disciplines under MEP
       { code: 'EL', name: 'Electrical (MEP)', sequenceOrder: 18, description: 'SLD, power, lighting, panel schedules, cable trays, DG/UPS' },
       { code: 'PL', name: 'Plumbing (MEP)', sequenceOrder: 19, description: 'Water supply, drainage, storm water, pump room, STP/WTP' },
@@ -209,4 +219,84 @@ export class ProjectRepository {
       .andWhere('(drawing.level = :level OR drawing.level = :all)', { level, all: 'ALL' });
     return await query.getMany();
   }
+
+  // --- FOLDERS ---
+  async createFolder(folderData: Partial<FolderModel>): Promise<FolderModel> {
+    const repo = this.folderRepo();
+    const folder = repo.create(folderData);
+    return await repo.save(folder);
+  }
+
+  async createFoldersBatch(foldersData: Partial<FolderModel>[]): Promise<FolderModel[]> {
+    const repo = this.folderRepo();
+    const entities = repo.create(foldersData);
+    return await repo.save(entities);
+  }
+
+  async findFoldersByProjectId(projectId: string): Promise<FolderModel[]> {
+    return await this.folderRepo().find({
+      where: { projectId },
+      order: { sortOrder: 'ASC', name: 'ASC' }
+    });
+  }
+
+  async findFolderById(id: string): Promise<FolderModel | null> {
+    return await this.folderRepo().findOne({ where: { id } });
+  }
+
+  async updateFolder(id: string, updates: Partial<FolderModel>): Promise<FolderModel> {
+    const repo = this.folderRepo();
+    await repo.update(id, updates);
+    const updated = await repo.findOne({ where: { id } });
+    if (!updated) throw new Error('Folder not found after update.');
+    return updated;
+  }
+
+  async deleteFolder(id: string): Promise<void> {
+    // Delete all child folders recursively
+    const repo = this.folderRepo();
+    const children = await repo.find({ where: { parentFolderId: id } });
+    for (const child of children) {
+      await this.deleteFolder(child.id);
+    }
+    // Delete files associated with this folder
+    await this.projectFileRepo().delete({ folderId: id });
+    // Delete the folder itself
+    await repo.delete(id);
+  }
+
+  // --- PROJECT FILES ---
+  async findProjectFiles(projectId: string, folderId?: string): Promise<ProjectFileModel[]> {
+    const where: any = { projectId };
+    if (folderId) {
+      where.folderId = folderId;
+    }
+    return await this.projectFileRepo().find({
+      where,
+      order: { createdAt: 'DESC' }
+    });
+  }
+
+  async findProjectFileById(id: string): Promise<ProjectFileModel | null> {
+    return await this.projectFileRepo().findOne({ where: { id } });
+  }
+
+  async createProjectFile(fileData: Partial<ProjectFileModel>): Promise<ProjectFileModel> {
+    const repo = this.projectFileRepo();
+    const file = repo.create(fileData);
+    return await repo.save(file);
+  }
+
+  async updateProjectFile(id: string, updates: Partial<ProjectFileModel>): Promise<ProjectFileModel> {
+    const repo = this.projectFileRepo();
+    await repo.update(id, updates);
+    const updated = await repo.findOne({ where: { id } });
+    if (!updated) throw new Error('Project file not found after update.');
+    return updated;
+  }
+
+  async deleteProjectFile(id: string): Promise<void> {
+    await this.projectFileRepo().delete(id);
+  }
 }
+

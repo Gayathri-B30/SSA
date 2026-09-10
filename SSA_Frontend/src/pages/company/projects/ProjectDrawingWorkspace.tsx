@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import api from '../../../services/api';
 import { DISCIPLINE_CATALOG, deriveProjectCodeFromName, type DisciplineCode } from '../../../data/masterDrawingListData';
+import { ProjectFileManager } from '../../../components/projects/ProjectFileManager';
+
 const DEFAULT_PROJECT = {
   id: 'PRJ-DEFAULT',
   projectCode: 'PROJECT',
@@ -131,6 +133,8 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [blobPdfUrl, setBlobPdfUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState<boolean>(false);
+  const [isFileManagerOpen, setIsFileManagerOpen] = useState<boolean>(false);
+
 
   // Fetch remote PDF as typed Blob to bypass Content-Disposition: attachment header
   useEffect(() => {
@@ -595,6 +599,13 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
     }
   };
 
+  const openAddDisciplineModal = () => {
+    const existingCodes = (projectData?.disciplines || []).map((d: any) => d.code);
+    const available = Object.keys(DISCIPLINE_CATALOG).find(c => !existingCodes.includes(c)) || 'AR';
+    setNewDisciplineCode(available);
+    setIsAddDisciplineModalOpen(true);
+  };
+
   const handleOpenAddDrawingModal = () => {
     const rawId = selectedProjectId || projectData?.id || projectData?.projectCode || 'GVR';
     const pCode = deriveProjectCodeFromName(projectData?.projectName || projectData?.clientName || 'Project', rawId);
@@ -812,6 +823,18 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
     projectData?.projectCode || selectedProjectId
   );
 
+  if (isFileManagerOpen) {
+    return (
+      <ProjectFileManager
+        projectId={selectedProjectId || projectData?.id || DEFAULT_PROJECT.id}
+        projectCode={displayProjectCode}
+        projectName={projectData?.projectName || 'Project'}
+        clientName={projectData?.clientName || projectData?.company}
+        onBack={() => setIsFileManagerOpen(false)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Header Controls */}
@@ -849,7 +872,7 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
         </div>
 
         {/* Read-Only Client Account Display */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold text-brand-charcoal dark:text-white shadow-xs">
             <Building2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
             <span>{(projectData?.company && projectData.company !== 'No Company') ? projectData.company : (projectData?.clientName || projectData?.projectName || 'Company Account')}</span>
@@ -857,6 +880,15 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
               {displayProjectCode}
             </span>
           </div>
+
+          <button
+            onClick={() => setIsFileManagerOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary border border-brand-primary/20 text-xs font-extrabold transition-all cursor-pointer active:scale-95 shadow-xs"
+            title="Browse 17 Standard Folders & Files Hierarchy"
+          >
+            <Folder className="w-4 h-4" />
+            17 Standard Folders
+          </button>
 
           <button
             onClick={handleOpenAddDrawingModal}
@@ -867,7 +899,7 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
           </button>
 
           <button
-            onClick={() => setIsAddDisciplineModalOpen(true)}
+            onClick={openAddDisciplineModal}
             className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-extrabold text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer active:scale-95"
           >
             <FolderPlus className="w-4 h-4" />
@@ -1009,7 +1041,7 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
         )}
 
         <button
-          onClick={() => setIsAddDisciplineModalOpen(true)}
+          onClick={openAddDisciplineModal}
           className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border border-dashed border-emerald-400 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -1070,7 +1102,7 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
           </div>
 
           <button
-            onClick={() => setIsAddDisciplineModalOpen(true)}
+            onClick={openAddDisciplineModal}
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
             title="Create Discipline Folder"
           >
@@ -1103,7 +1135,7 @@ export const ProjectDrawingWorkspace: React.FC<ProjectDrawingWorkspaceProps> = (
             <p className="text-xs text-brand-gray">Try adjusting your discipline or level filters, or add a new drawing / folder.</p>
             <div className="flex items-center justify-center gap-2 pt-2">
               <button
-                onClick={() => setIsAddDisciplineModalOpen(true)}
+                onClick={openAddDisciplineModal}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer active:scale-95"
               >
                 <FolderPlus className="w-3.5 h-3.5" /> Add Folder

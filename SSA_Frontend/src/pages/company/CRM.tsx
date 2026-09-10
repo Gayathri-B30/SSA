@@ -82,6 +82,11 @@ const deriveDisciplineCode = (title: string): string => {
   return clean.slice(0, 2).toUpperCase()
 }
 
+export const stripNumberPrefix = (name?: string): string => {
+  if (!name) return ''
+  return name.replace(/^[\d\.\-\s]+/, '')
+}
+
 export type DrawingWorkflowStage = 'WIP' | 'REVIEW' | 'SHARED' | 'ARCHIVE'
 
 export interface DrawingWorkflowFolderMeta {
@@ -486,6 +491,13 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
     setSelectedDrawingFile(null)
     setDrawingFolderSuccess(null)
     setIsAddDrawingModalOpen(true)
+  }
+
+  const openAddSubFolderModal = (discCode?: string) => {
+    const target = discCode || (drawingDisciplineFilter !== 'ALL' ? drawingDisciplineFilter : (selectedDrawingProject?.disciplines?.[0] || 'AR'))
+    setSubFolderTargetDiscipline(target)
+    setNewSubFolderName('')
+    setIsAddSubFolderModalOpen(true)
   }
 
   const handleCreateSubFolder = (discOverride?: string) => {
@@ -1992,7 +2004,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                           className="group relative flex flex-col items-center p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer text-center"
                         >
                           <Folder className="w-10 h-10 sm:w-12 sm:h-12 text-amber-500 fill-amber-500/20 mb-2 group-hover:scale-110 transition-transform shrink-0" />
-                          <p className="font-extrabold text-[11px] sm:text-xs text-slate-800 dark:text-white break-words text-center leading-snug">{code} — {displayName}</p>
+                          <p className="font-extrabold text-[11px] sm:text-xs text-slate-800 dark:text-white break-words text-center leading-snug">{code} — {stripNumberPrefix(displayName)}</p>
                           <span className="mt-1 text-[9px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                             {count} Documents
                           </span>
@@ -2077,10 +2089,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                             </p>
                             <button
                               type="button"
-                              onClick={() => {
-                                setNewSubFolderName('')
-                                setIsAddSubFolderModalOpen(true)
-                              }}
+                              onClick={() => openAddSubFolderModal(drawingDisciplineFilter)}
                               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-primary hover:bg-primary-600 text-white text-xs font-extrabold shadow-sm transition-all cursor-pointer active:scale-95"
                             >
                               <FolderPlus className="w-4 h-4" />Create First Folder
@@ -2122,7 +2131,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                                       </div>
                                     </div>
                                     <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug">
-                                      {sub.name}
+                                      {stripNumberPrefix(sub.name)}
                                     </h4>
                                   </div>
 
@@ -2315,7 +2324,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                       <div>
                         <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                           <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" />
-                          <span>{nonDrawingMeta?.name || drawingDisciplineFilter}</span>
+                          <span>{stripNumberPrefix(nonDrawingMeta?.name || drawingDisciplineFilter)}</span>
                         </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {nonDrawingMeta?.description || 'Drawing deliverable packages with Work In Progress, Under Review, Shared & Archive stages.'}
@@ -2325,10 +2334,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setNewSubFolderName('')
-                            setIsAddSubFolderModalOpen(true)
-                          }}
+                          onClick={() => openAddSubFolderModal(drawingDisciplineFilter)}
                           className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95"
                         >
                           <FolderPlus className="w-4 h-4" /> Add Drawing Folder
@@ -2357,10 +2363,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {/* Quick Create Folder Card */}
                         <div
-                          onClick={() => {
-                            setNewSubFolderName('')
-                            setIsAddSubFolderModalOpen(true)
-                          }}
+                          onClick={() => openAddSubFolderModal(drawingDisciplineFilter)}
                           className="p-5 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 hover:border-emerald-500 hover:bg-emerald-500/5 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center text-center group min-h-[140px]"
                         >
                           <FolderPlus className="w-10 h-10 text-emerald-500/70 group-hover:scale-110 transition-transform mb-2" />
@@ -2411,7 +2414,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                                   </div>
                                 </div>
                                 <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug">
-                                  {sub.name}
+                                  {stripNumberPrefix(sub.name)}
                                 </h4>
                                 <p className="text-[10px] text-slate-400 font-medium mt-1">
                                   4 Stages: WIP • Review • Shared • Archive
@@ -3065,147 +3068,180 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
       )}
 
       {/* ═════════════════════════════════════════════════════════════════════════
-          CREATE SUBFOLDER INSIDE DISCIPLINE MODAL
+          CREATE SUBFOLDER INSIDE DISCIPLINE MODAL (MODERN REDESIGNED UI)
       ═════════════════════════════════════════════════════════════════════════ */}
       {isAddSubFolderModalOpen && selectedDrawingProject && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 font-extrabold">
-                  <FolderPlus className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800/80 bg-gradient-to-r from-amber-500/10 via-slate-50 to-transparent dark:from-amber-500/10 dark:via-slate-900 dark:to-transparent">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/20 flex items-center justify-center shrink-0">
+                  <FolderPlus className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
                     Add Drawing Folder
                   </h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Project: <strong className="text-slate-700 dark:text-slate-200">{selectedDrawingProject.companyName}</strong> ({selectedDrawingProject.projectCode})
-                  </p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      Project: <strong className="text-slate-700 dark:text-slate-200">{selectedDrawingProject.companyName}</strong>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-mono font-bold border border-amber-500/20">
+                      {selectedDrawingProject.projectCode}
+                    </span>
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => setIsAddSubFolderModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Close"
               >
-                <XCircle className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
-              {/* Discipline Selection */}
+            {/* Modal Form Body */}
+            <div className="p-6 overflow-y-auto space-y-5 text-xs">
+              {/* Target Discipline */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                   Target Discipline Folder <span className="text-amber-500">*</span>
                 </label>
-                <select
-                  value={subFolderTargetDiscipline || (drawingDisciplineFilter !== 'ALL' ? drawingDisciplineFilter : 'AR')}
-                  onChange={(e) => setSubFolderTargetDiscipline(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white font-semibold text-xs outline-none focus:border-amber-500 cursor-pointer"
-                >
-                  {selectedDrawingProject?.disciplines && selectedDrawingProject.disciplines.length > 0 ? (
-                    selectedDrawingProject.disciplines.map((code: string) => (
-                      <option key={code} value={code}>
-                        {code} — {DISCIPLINE_CATALOG[code as DisciplineCode]?.name || code}
-                      </option>
-                    ))
-                  ) : (
-                    Object.entries(DISCIPLINE_CATALOG).map(([code, meta]) => (
-                      <option key={code} value={code}>
-                        {code} — {meta.name}
-                      </option>
-                    ))
-                  )}
-                </select>
+                <div className="relative">
+                  <select
+                    value={subFolderTargetDiscipline}
+                    onChange={(e) => setSubFolderTargetDiscipline(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-white font-bold text-xs outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 cursor-pointer transition-all shadow-xs"
+                  >
+                    {selectedDrawingProject?.disciplines && selectedDrawingProject.disciplines.length > 0 ? (
+                      selectedDrawingProject.disciplines.map((code: string) => (
+                        <option key={code} value={code}>
+                          {code} — {stripNumberPrefix(DISCIPLINE_CATALOG[code as DisciplineCode]?.name || code)}
+                        </option>
+                      ))
+                    ) : (
+                      Object.entries(DISCIPLINE_CATALOG).map(([code, meta]) => (
+                        <option key={code} value={code}>
+                          {code} — {stripNumberPrefix(meta.name)}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
               </div>
 
-              {/* Folder Name Input */}
+              {/* Folder / Package Name Input */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1.5">
-                  Drawing Folder / Package Name <span className="text-amber-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                  Folder / Package Name <span className="text-amber-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={newSubFolderName}
-                  onChange={(e) => setNewSubFolderName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      handleCreateSubFolder()
-                    }
-                  }}
-                  placeholder="e.g. Scheme Drawings, Preliminary Drawings, Working Plan..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white font-semibold outline-none focus:border-amber-500 text-xs"
-                />
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
+                    <Folder className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+                  </div>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={newSubFolderName}
+                    onChange={(e) => setNewSubFolderName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleCreateSubFolder()
+                      }
+                    }}
+                    placeholder="e.g. Scheme Drawings, Preliminary Drawings, Working Plan..."
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/80 text-slate-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 text-xs shadow-xs transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal"
+                  />
+                </div>
               </div>
 
-              {/* Preset Suggestion Chips */}
+              {/* Quick Suggestion Chips */}
               <div>
-                <p className="text-[10px] text-slate-400 font-bold mb-1.5">Quick Suggestions & Standard Packages:</p>
+                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Quick Suggestions (Click to Select):</span>
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    '1. Scheme Drawings',
-                    '2. Preliminary Drawings',
-                    '3. Working Plan, Elevation & Section Drawings',
-                    '4. Detailed Drawings',
-                    '5. Joinery Drawings',
-                    '6. Staircase, Lift & Ramp Drawings',
-                    '7. Site Development & Landscape Drawings',
-                    '8. Compound Wall Drawings',
-                    '9. Layout Drawings',
+                    'Scheme Drawings',
+                    'Preliminary Drawings',
+                    'Working Plan, Elevation & Section Drawings',
+                    'Detailed Drawings',
+                    'Joinery Drawings',
+                    'Staircase, Lift & Ramp Drawings',
+                    'Site Development & Landscape Drawings',
+                    'Compound Wall Drawings',
+                    'Layout Drawings',
                     '3D Renders & Visualizations',
                     'Municipal & Sanction Plans',
-                  ].map(sugg => (
-                    <button
-                      key={sugg}
-                      type="button"
-                      onClick={() => setNewSubFolderName(sugg)}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/40 dark:hover:text-amber-400 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-                    >
-                      + {sugg}
-                    </button>
-                  ))}
+                  ].map(sugg => {
+                    const isSelected = newSubFolderName === sugg
+                    return (
+                      <button
+                        key={sugg}
+                        type="button"
+                        onClick={() => setNewSubFolderName(sugg)}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                            : 'bg-slate-100/80 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300 hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-500/30 border-slate-200 dark:border-slate-700/80'
+                        }`}
+                      >
+                        + {sugg}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
-              {/* Visual Workflow Stage Hierarchy Preview Box */}
-              <div className="p-3.5 rounded-2xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 space-y-2">
-                <div className="flex items-center gap-2 text-[11px] font-extrabold text-amber-700 dark:text-amber-300">
-                  <Folder className="w-4 h-4 fill-amber-500/20 text-amber-600" />
-                  <span>Folder Structure Preview:</span>
-                </div>
-                <div className="font-mono text-[10px] text-slate-600 dark:text-slate-300 space-y-1 bg-white/70 dark:bg-slate-900/70 p-2.5 rounded-xl border border-amber-500/15">
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    📁 <span>{newSubFolderName.trim() || 'Your Folder Name'}</span>
+              {/* Modern Visual Lifecycle Workflow Card */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/5 via-slate-50 to-slate-100/60 dark:from-amber-500/10 dark:via-slate-800/60 dark:to-slate-900 border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-extrabold text-amber-700 dark:text-amber-300">
+                    <Folder className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+                    <span>Included Workflow Stages</span>
                   </div>
-                  <div className="pl-4 border-l-2 border-amber-500/30 space-y-1 mt-1 text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center gap-1">
-                      <span>├── 📂 1. Work in Progress</span>
-                      <span className="text-[9px] text-slate-400 font-sans">(Drafting & revisions)</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span>├── 📂 2. Under Review</span>
-                      <span className="text-[9px] text-slate-400 font-sans">(Checker & QA review)</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span>├── 📂 3. Shared</span>
-                      <span className="text-[9px] text-slate-400 font-sans">(Approved for Client / GFC)</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span>└── 📂 4. Archived Drawings</span>
-                      <span className="text-[9px] text-slate-400 font-sans">(Superseded records)</span>
-                    </div>
+                  <span className="text-[10px] text-slate-400 font-medium">Auto-configured</span>
+                </div>
+
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                  This folder <strong className="text-slate-900 dark:text-white font-bold">"{stripNumberPrefix(newSubFolderName.trim()) || 'Your Folder Name'}"</strong> automatically includes the 4 standardized project deliverable stages:
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 text-center shadow-2xs">
+                    <span className="block text-[10px] font-extrabold text-amber-600 dark:text-amber-400 font-mono">STAGE 1</span>
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-white block mt-0.5">Work In Progress</span>
+                    <span className="text-[9px] text-slate-400 block mt-0.5">Drafting & revisions</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 text-center shadow-2xs">
+                    <span className="block text-[10px] font-extrabold text-purple-600 dark:text-purple-400 font-mono">STAGE 2</span>
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-white block mt-0.5">Under Review</span>
+                    <span className="text-[9px] text-slate-400 block mt-0.5">Checker & QA verification</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 text-center shadow-2xs">
+                    <span className="block text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">STAGE 3</span>
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-white block mt-0.5">Shared</span>
+                    <span className="text-[9px] text-slate-400 block mt-0.5">Approved for Client & GFC</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 text-center shadow-2xs">
+                    <span className="block text-[10px] font-extrabold text-slate-500 font-mono">STAGE 4</span>
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-white block mt-0.5">Archived</span>
+                    <span className="text-[9px] text-slate-400 block mt-0.5">Superseded versions</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-800/60">
               <button
                 type="button"
                 onClick={() => setIsAddSubFolderModalOpen(false)}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -3213,9 +3249,10 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                 type="button"
                 onClick={() => handleCreateSubFolder()}
                 disabled={!newSubFolderName.trim()}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-xs font-extrabold text-white shadow-md transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-xs font-extrabold text-white shadow-lg shadow-amber-500/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
               >
-                <FolderPlus className="w-4 h-4" /> Create Drawing Folder
+                <FolderPlus className="w-4 h-4" />
+                <span>Create Drawing Folder</span>
               </button>
             </div>
           </div>
@@ -3263,8 +3300,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                       type="button"
                       onClick={() => {
                         setIsAddDisciplineModalOpen(false)
-                        setNewSubFolderName('')
-                        setIsAddSubFolderModalOpen(true)
+                        openAddSubFolderModal(drawingDisciplineFilter)
                       }}
                       className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
                     >
@@ -3492,7 +3528,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Folder Code & Path Preview</span>
                   <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold font-sans">
-                    {DISCIPLINE_CATALOG[newDisciplineCode as DisciplineCode]?.name || customDisciplineName || newDisciplineCode}
+                    {stripNumberPrefix(DISCIPLINE_CATALOG[newDisciplineCode as DisciplineCode]?.name || customDisciplineName || newDisciplineCode)}
                   </span>
                 </div>
                 <p className="text-sm font-extrabold text-amber-600 dark:text-amber-400 truncate">
@@ -4815,7 +4851,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                   {/* Created drawing folders */}
                   {subFoldersList.filter(s => s.discipline === (drawingForm.discipline || drawingDisciplineFilter)).map(sub => (
                     <option key={sub.id} value={sub.name}>
-                      📁 {sub.name}
+                      📁 {stripNumberPrefix(sub.name)}
                     </option>
                   ))}
                 </select>

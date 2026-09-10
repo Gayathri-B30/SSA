@@ -6,8 +6,15 @@ import {
   DrawingTypeModel,
   DrawingModel,
   DrawingRevisionModel,
-  DrawingFileModel
+  DrawingFileModel,
+  FolderModel,
+  ProjectFileModel
 } from '../models';
+import {
+  STANDARD_PROJECT_FOLDER_TEMPLATE,
+  FolderTemplateNode
+} from '../templates/project-folder.template';
+
 
 export class ProjectService {
   private projectRepo = new ProjectRepository();
@@ -140,6 +147,13 @@ export class ProjectService {
 
     // 3. Auto-Generate Master Drawing Register
     await this.generateMasterDrawingRegister(project, activeDisciplineCodes, configuredFloors);
+
+    // 4. Auto-Generate Complete Standard Folder Hierarchy (Based on KONGUNAD HOSPITAL structure)
+    try {
+      await this.generateStandardFolders(project.id, project.projectName, input.clientName || 'System');
+    } catch (folderErr) {
+      console.error('[ProjectService] Error generating folder structure:', folderErr);
+    }
 
     return await this.getProjectById(project.id);
   }
@@ -529,4 +543,201 @@ export class ProjectService {
     }
     return null;
   }
+
+  // ==========================================
+  // PROJECT FOLDERS & FILE MANAGEMENT
+  // ==========================================
+
+  /**
+   * Generates the standard 17-folder hierarchical structure for a project based on the KONGUNAD HOSPITAL template.
+   * Ensures idempotency: duplicate folders will not be created.
+   */
+  async generateStandardFolders(projectId: string, projectName: string, createdBy: string = 'System'): Promise<FolderModel[]> {
+    const existingFolders = await this.projectRepo.findFoldersByProjectId(projectId);
+
+    // 1. Root folder
+    let rootFolder = existingFolders.find(
+      f => f.folderType === 'ROOT' || (!f.parentFolderId && f.name.trim().toLowerCase() === projectName.trim().toLowerCase())
+    );
+
+    if (!rootFolder) {
+      rootFolder = await this.projectRepo.createFolder({
+        projectId,
+        parentFolderId: null,
+        name: projectName,
+        folderType: 'ROOT',
+        sortOrder: 0,
+        isSystemFolder: true,
+        createdBy,
+      });
+      existingFolders.push(rootFolder);
+    }
+
+    // 2. Recursive helper to insert nodes
+    const processNodes = async (nodes: FolderTemplateNode[], parentId: string | null) => {
+      for (const node of nodes) {
+        let existing = existingFolders.find(
+          f => f.parentFolderId === parentId && f.name.trim().toLowerCase() === node.name.trim().toLowerCase()
+        );
+
+        if (!existing) {
+          existing = await this.projectRepo.createFolder({
+            projectId,
+            parentFolderId: parentId,
+            name: node.name,
+            folderType: node.folderType || 'CATEGORY',
+            sortOrder: node.sortOrder || 0,
+            isSystemFolder: true,
+            createdBy,
+          });
+          existingFolders.push(existing);
+        }
+
+        if (node.children && node.children.length > 0) {
+          await processNodes(node.children, existing.id);
+        }
+      }
+    };
+
+    // Insert all 17 top-level folders and nested children under rootFolder
+    await processNodes(STANDARD_PROJECT_FOLDER_TEMPLATE, rootFolder.id);
+
+    return await this.projectRepo.findFoldersByProjectId(projectId);
+  }
+
+  /**
+   * Fetch all folders for a project, resolving by UUID or projectCode
+   */
+  async getProjectFolders(projectIdOrCode: string): Promise<{ project: ProjectModel | null; folders: FolderModel[] }> {
+    let project = await this.projectRepo.findProjectById(projectIdOrCode);
+    if (!project) {
+      project = await this.projectRepo.findProjectByCode(projectIdOrCode);
+    }
+    const targetId = project ? project.id : projectIdOrCode;
+    let folders = await this.projectRepo.findFoldersByProjectId(targetId);
+
+    // If project exists but has 0 folders, auto-generate them
+    if (project && folders.length === 0) {
+      folders = await this.generateStandardFolders(project.id, project.projectName, project.clientName || 'System');
+    }
+
+    return { project, folders };
+  }
+
+  /**
+   * Create a custom folder inside a project
+   */
+  async createFolder(input: {
+    projectId: string;
+    parentFolderId?: string | null;
+    name: string;
+    folderType?: string;
+    createdBy?: string;
+  }): Promise<FolderModel> {
+    let project = await this.projectRepo.findProjectById(input.projectId);
+    if (!project) {
+      project = await this.projectRepo.findProjectByCode(input.projectId);
+    }
+    const pId = project ? project.id : input.projectId;
+
+    return await this.projectRepo.createFolder({
+      projectId: pId,
+      parentFolderId: input.parentFolderId || null,
+      name: input.name.trim(),
+      folderType: input.folderType || 'CUSTOM',
+      sortOrder: 99,
+      isSystemFolder: false,
+      createdBy: input.createdBy || 'User',
+    });
+  }
+
+  /**
+   * Rename a folder
+   */
+  async renameFolder(folderId: string, name: string): Promise<FolderModel> {
+    return await this.projectRepo.updateFolder(folderId, { name: name.trim() });
+  }
+
+  /**
+   * Delete a folder and its recursive children
+   */
+  async deleteFolder(folderId: string): Promise<boolean> {
+    const folder = await this.projectRepo.findFolderById(folderId);
+    if (!folder) return false;
+    await this.projectRepo.deleteFolder(folderId);
+    return true;
+  }
+
+  /**
+   * Explicitly initialize or re-sync standard hierarchy for an existing project
+   */
+  async initProjectFolderHierarchy(projectIdOrCode: string, createdBy: string = 'System'): Promise<FolderModel[]> {
+    let project = await this.projectRepo.findProjectById(projectIdOrCode);
+    if (!project) {
+      project = await this.projectRepo.findProjectByCode(projectIdOrCode);
+    }
+    if (!project) {
+      throw new Error(`Project "${projectIdOrCode}" not found.`);
+    }
+    return await this.generateStandardFolders(project.id, project.projectName, createdBy);
+  }
+
+  /**
+   * Files in a project / folder
+   */
+  async getProjectFiles(projectIdOrCode: string, folderId?: string): Promise<ProjectFileModel[]> {
+    let project = await this.projectRepo.findProjectById(projectIdOrCode);
+    if (!project) {
+      project = await this.projectRepo.findProjectByCode(projectIdOrCode);
+    }
+    const pId = project ? project.id : projectIdOrCode;
+    return await this.projectRepo.findProjectFiles(pId, folderId);
+  }
+
+  /**
+   * Record a new file upload
+   */
+  async createProjectFile(input: {
+    projectId: string;
+    folderId: string;
+    fileName: string;
+    filePath: string;
+    fileType?: string;
+    fileSize?: number;
+    uploadedBy?: string;
+  }): Promise<ProjectFileModel> {
+    let project = await this.projectRepo.findProjectById(input.projectId);
+    if (!project) {
+      project = await this.projectRepo.findProjectByCode(input.projectId);
+    }
+    const pId = project ? project.id : input.projectId;
+
+    return await this.projectRepo.createProjectFile({
+      projectId: pId,
+      folderId: input.folderId,
+      fileName: input.fileName,
+      filePath: input.filePath,
+      fileType: input.fileType || 'application/octet-stream',
+      fileSize: input.fileSize || 0,
+      uploadedBy: input.uploadedBy || 'User',
+    });
+  }
+
+  /**
+   * Rename a project file
+   */
+  async renameProjectFile(fileId: string, fileName: string): Promise<ProjectFileModel> {
+    return await this.projectRepo.updateProjectFile(fileId, { fileName: fileName.trim() });
+  }
+
+  /**
+   * Delete a project file
+   */
+  async deleteProjectFile(fileId: string): Promise<boolean> {
+    const file = await this.projectRepo.findProjectFileById(fileId);
+    if (!file) return false;
+    await this.projectRepo.deleteProjectFile(fileId);
+    return true;
+  }
 }
+

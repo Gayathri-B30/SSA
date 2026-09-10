@@ -20,7 +20,9 @@ import {
   DrawingTypeModel,
   DrawingModel,
   DrawingRevisionModel,
-  DrawingFileModel
+  DrawingFileModel,
+  FolderModel,
+  ProjectFileModel
 } from "../../modules/project";
 
 const globalRef = global as unknown as { AppDataSource: DataSource | undefined };
@@ -58,7 +60,9 @@ export const AppDataSource = globalRef.AppDataSource || new DataSource({
     DrawingTypeModel,
     DrawingModel,
     DrawingRevisionModel,
-    DrawingFileModel
+    DrawingFileModel,
+    FolderModel,
+    ProjectFileModel
   ],
   migrations: [],
   subscribers: [],
