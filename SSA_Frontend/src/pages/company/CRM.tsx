@@ -12,7 +12,7 @@ import {
   MapPin, Layers, FileText, Briefcase, Edit2,
   CheckCircle2, XCircle, Zap, Folder, FolderPlus,
   Search, ArrowLeft, Download, Users, Building, ShieldCheck, Tag,
-  Upload, X, AlertCircle, AlertTriangle, RotateCcw, Archive
+  Upload, X, AlertCircle, AlertTriangle, RotateCcw, Archive, ExternalLink
 } from 'lucide-react'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
@@ -298,7 +298,6 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
   const [drawingDisciplineFilter, setDrawingDisciplineFilter] = useState<string>('ALL')
   const [previewDrawing, setPreviewDrawing] = useState<any | null>(null)
   const [blobPdfUrl, setBlobPdfUrl] = useState<string | null>(null)
-  const [pdfLoading, setPdfLoading] = useState<boolean>(false)
   const [projectDrawingsList, setProjectDrawingsList] = useState<any[]>([])
   const [loadingDrawings, setLoadingDrawings] = useState<boolean>(false)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
@@ -386,37 +385,36 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'client' | 'lead'; id: string; name: string } | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // Fetch remote PDF as typed in-memory Blob to bypass Content-Disposition: attachment header and prevent auto-download
+  // Fetch remote PDF or provide direct URL for browser native viewing
   useEffect(() => {
     if (!previewDrawing) {
       setBlobPdfUrl(null)
-      setPdfLoading(false)
       return
     }
 
     const rawUrl = getDrawingFileUrl(previewDrawing) || previewDrawing.fileUrl || previewDrawing.url || previewDrawing.file || previewDrawing.filePath || ''
     if (!rawUrl || rawUrl.endsWith('placeholder')) {
       setBlobPdfUrl(null)
-      setPdfLoading(false)
       return
     }
 
     const isImage = /\.(png|jpg|jpeg|webp|gif|svg)(\?.*)?$/i.test(rawUrl) || (previewDrawing.originalFileName && /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(previewDrawing.originalFileName))
     if (isImage) {
       setBlobPdfUrl(null)
-      setPdfLoading(false)
       return
     }
 
-    if (rawUrl.startsWith('blob:')) {
-      setBlobPdfUrl(rawUrl)
-      setPdfLoading(false)
+    // Set rawUrl as initial target so browser native viewer loads without delay
+    setBlobPdfUrl(rawUrl)
+
+    // If it's already a blob/data URL, no need to refetch
+    if (rawUrl.startsWith('blob:') || rawUrl.startsWith('data:')) {
       return
     }
 
-    setPdfLoading(true)
     let active = true
 
+    // Attempt blob fetch to bypass restrictive headers where permitted
     fetch(rawUrl)
       .then(async (res) => {
         if (!res.ok) throw new Error('Fetch failed')
@@ -425,14 +423,12 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
         const objUrl = URL.createObjectURL(pdfBlob)
         if (active) {
           setBlobPdfUrl(objUrl)
-          setPdfLoading(false)
         }
       })
-      .catch((err) => {
-        console.warn('PDF blob fetch fallback to Google Docs Viewer:', err)
+      .catch(() => {
+        // Retain direct rawUrl for browser PDF rendering if fetch fails (CORS, localhost, etc.)
         if (active) {
-          setBlobPdfUrl(`https://docs.google.com/viewer?url=${encodeURIComponent(rawUrl)}&embedded=true`)
-          setPdfLoading(false)
+          setBlobPdfUrl(rawUrl)
         }
       })
 
@@ -2146,56 +2142,6 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                           </div>
                         )}
                       </div>
-
-                      {/* Direct / Root Documents in this Category (if any) */}
-                      {disciplineDrawings.length > 0 && (
-                        <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                              All Documents in {drawingDisciplineFilter} ({disciplineDrawings.length})
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
-                            {disciplineDrawings.map((dwg) => {
-                              const dwgId = dwg.id || dwg.drawingNumber || dwg.drawingCode
-                              return (
-                                <div
-                                  key={dwgId}
-                                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-primary shadow-xs hover:shadow-lg transition-all duration-200 text-slate-800 dark:text-white"
-                                >
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <FileText className="w-4 h-4 text-brand-primary shrink-0" />
-                                      <p className="font-mono font-bold text-xs group-hover:text-brand-primary transition-colors truncate">
-                                        {dwg.drawingNumber || dwg.drawingCode}
-                                      </p>
-                                    </div>
-                                    <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 mt-1 line-clamp-2">
-                                      {dwg.drawingTitle || dwg.title}
-                                    </p>
-                                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2 mt-1.5 flex-wrap">
-                                      {dwg.subFolder && <span className="text-brand-primary dark:text-primary-300 font-bold">📁 {dwg.subFolder}</span>}
-                                      {dwg.originalFileName && <span className="text-slate-400 truncate">({dwg.originalFileName})</span>}
-                                    </div>
-                                  </div>
-
-                                  <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                    <button
-                                      type="button"
-                                      onClick={() => setPreviewDrawing(dwg)}
-                                      className="w-full py-1.5 px-2.5 rounded-xl bg-brand-primary hover:bg-primary-600 text-white font-extrabold text-[10px] flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                      <span>View & Download</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )
                 }
@@ -2431,57 +2377,6 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                         })}
                       </div>
                     </div>
-
-                    {/* Direct / Uncategorized Deliverables in this Discipline (if any) */}
-                    {disciplineDrawings.length > 0 && (
-                      <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            All Drawings in {drawingDisciplineFilter} ({disciplineDrawings.length})
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
-                          {disciplineDrawings.map((dwg) => {
-                            const dwgId = dwg.id || dwg.drawingNumber || dwg.drawingCode
-                            return (
-                              <div
-                                key={dwgId}
-                                className="group relative flex flex-col justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 shadow-xs hover:shadow-lg transition-all duration-200 text-slate-800 dark:text-white"
-                              >
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-brand-primary shrink-0" />
-                                    <p className="font-mono font-bold text-xs group-hover:text-brand-primary transition-colors truncate">
-                                      {dwg.drawingNumber || dwg.drawingCode}
-                                    </p>
-                                  </div>
-                                  <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 mt-1 line-clamp-2">
-                                    {dwg.drawingTitle || dwg.title}
-                                  </p>
-                                  <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2 mt-1.5 flex-wrap">
-                                    {dwg.subFolder && <span className="text-amber-600 dark:text-amber-400 font-bold">📁 {dwg.subFolder}</span>}
-                                    <span>Rev: <strong>{dwg.revisionNumber || 'R00'}</strong></span>
-                                    <span>• Level: <strong>{dwg.level || 'GF'}</strong></span>
-                                  </div>
-                                </div>
-
-                                <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                  <button
-                                    type="button"
-                                    onClick={() => setPreviewDrawing(dwg)}
-                                    className="w-full py-1.5 px-2.5 rounded-xl bg-brand-primary hover:bg-primary-600 text-white font-extrabold text-[10px] flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View & Download</span>
-                                  </button>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )
               }
@@ -2601,66 +2496,6 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                         })}
                       </div>
                     </div>
-
-                    {/* All Drawings in this Package (Direct View) */}
-                    {folderDrawings.length > 0 && (
-                      <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            All Drawings in {selectedDrawingSubFolder} ({folderDrawings.length})
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
-                          {folderDrawings.map((dwg) => {
-                            const stage = getDrawingWorkflowStage(dwg.status)
-                            const stageMeta = DRAWING_WORKFLOW_FOLDERS.find(f => f.id === stage) || DRAWING_WORKFLOW_FOLDERS[0]
-                            const dwgId = dwg.id || dwg.drawingNumber || dwg.drawingCode
-                            return (
-                              <div
-                                key={dwgId}
-                                className="group relative flex flex-col justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 shadow-xs hover:shadow-lg transition-all duration-200 text-slate-800 dark:text-white"
-                              >
-                                <div>
-                                  <div className="flex items-start justify-between gap-2 mb-2">
-                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-black border ${stageMeta.badgeBg}`}>
-                                      {stageMeta.number}. {stageMeta.shortName}
-                                    </span>
-                                  </div>
-
-                                  <div onClick={() => setPreviewDrawing(dwg)} className="cursor-pointer">
-                                    <div className="flex items-center gap-2">
-                                      <FileText className="w-4 h-4 text-brand-primary shrink-0" />
-                                      <p className="font-mono font-bold text-xs hover:text-brand-primary transition-colors truncate">
-                                        {dwg.drawingNumber || dwg.drawingCode}
-                                      </p>
-                                    </div>
-                                    <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 mt-1 line-clamp-2">
-                                      {dwg.drawingTitle || dwg.title}
-                                    </p>
-                                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2 mt-1.5 flex-wrap">
-                                      <span>Rev: <strong>{dwg.revisionNumber || 'R00'}</strong></span>
-                                      <span>• Level: <strong>{dwg.level || 'GF'}</strong></span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                  <button
-                                    type="button"
-                                    onClick={() => setPreviewDrawing(dwg)}
-                                    className="w-full py-1.5 px-2.5 rounded-xl bg-brand-primary hover:bg-primary-600 text-white font-extrabold text-[10px] flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View & Download</span>
-                                  </button>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )
               }
@@ -5027,7 +4862,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
           <div className="w-full max-w-7xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[96vh]">
             {(() => {
               const rawUrl = getDrawingFileUrl(previewDrawing) || previewDrawing.fileUrl || previewDrawing.url || previewDrawing.file || previewDrawing.filePath || ''
-              const hasValidUrl = rawUrl && !rawUrl.endsWith('placeholder') && (rawUrl.startsWith('http') || rawUrl.startsWith('blob:') || rawUrl.startsWith('data:'))
+              const hasValidUrl = Boolean(rawUrl && !rawUrl.endsWith('placeholder') && (rawUrl.startsWith('http') || rawUrl.startsWith('blob:') || rawUrl.startsWith('data:') || rawUrl.startsWith('/')))
               const currentStage = getDrawingWorkflowStage(previewDrawing.status)
               const dwgId = previewDrawing.id || previewDrawing.drawingNumber || previewDrawing.drawingCode
               const isDrawing = isDrawingDiscipline(previewDrawing.discipline || drawingDisciplineFilter)
@@ -5162,15 +4997,27 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                       )}
 
                       {hasValidUrl && (
-                        <a
-                          href={rawUrl}
-                          download={previewDrawing.originalFileName || `${previewDrawing.drawingTitle || 'document'}.pdf`}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs inline-flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
-                          title="Download Document"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Download</span>
-                        </a>
+                        <>
+                          <a
+                            href={rawUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs inline-flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                            title="Open in New Tab"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Open in New Tab</span>
+                          </a>
+                          <a
+                            href={rawUrl}
+                            download={previewDrawing.originalFileName || `${previewDrawing.drawingTitle || 'document'}.pdf`}
+                            className="px-3 py-1.5 rounded-xl bg-brand-primary hover:bg-primary-600 text-white font-extrabold text-xs inline-flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                            title="Download Document"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Download</span>
+                          </a>
+                        </>
                       )}
 
                       <button
@@ -5216,18 +5063,11 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                         )
                       }
 
-                      if (pdfLoading || !blobPdfUrl) {
-                        return (
-                          <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
-                            <div className="w-10 h-10 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
-                            <p className="text-xs font-bold text-slate-300">Loading document...</p>
-                          </div>
-                        )
-                      }
+                      const pdfSource = blobPdfUrl || rawUrl
 
                       return (
                         <iframe
-                          src={blobPdfUrl}
+                          src={pdfSource}
                           className="w-full h-full border-none bg-white"
                           title={previewDrawing.drawingTitle || previewDrawing.originalFileName || 'Document Preview'}
                           allow="fullscreen"
@@ -5238,7 +5078,7 @@ export const CRM: React.FC<CRMProps> = ({ defaultTab = 'clients' }) => {
                         <FileText className="w-12 h-12 text-amber-500 mx-auto opacity-80" />
                         <h4 className="text-sm sm:text-base font-extrabold text-white">{previewDrawing.drawingTitle || 'Drawing Details'}</h4>
                         <p className="text-xs text-slate-400 font-mono">
-                          {previewDrawing.drawingNumber} • Level: {previewDrawing.level || 'GF'} • Rev: {previewDrawing.revisionNumber || 'R00'}
+                          {previewDrawing.drawingNumber || previewDrawing.drawingCode} • Level: {previewDrawing.level || 'GF'} • Rev: {previewDrawing.revisionNumber || 'R00'}
                         </p>
                         <p className="text-xs text-amber-400 font-semibold pt-1">No file document attached to this drawing record.</p>
                       </div>
